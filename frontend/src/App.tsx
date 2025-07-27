@@ -7,23 +7,14 @@ import Notification from './components/Notification'
 import './styles/notifications.css'
 
 export function isMarketOpen() {
-  // Get current time in EST (UTC-5 or UTC-4 for daylight saving)
   const now = new Date()
-  // Convert to UTC, then to EST (New York time)
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000
-  // New York is UTC-4 during daylight saving (Mar-Nov), UTC-5 otherwise
-  const jan = new Date(now.getFullYear(), 0, 1)
-  const jul = new Date(now.getFullYear(), 6, 1)
-  const stdTimezoneOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset())
-  const isDST = now.getTimezoneOffset() < stdTimezoneOffset
-  const offset = isDST ? -4 : -5
-  const est = new Date(utc + 3600000 * offset)
-
-  const hours = est.getHours()
-  const minutes = est.getMinutes()
-  // Market open: 9:30 AM (9*60+30=570), close: 4:00 PM (16*60=960)
+  const ny = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const day = ny.getDay() // 0 = Sunday, 6 = Saturday
+  if (day === 0 || day === 6) return false // Closed on weekends
+  const hours = ny.getHours()
+  const minutes = ny.getMinutes()
   const mins = hours * 60 + minutes
-  return mins >= 570 && mins < 960
+  return mins >= 570 && mins < 960 // 9:30am to 4:00pm
 }
 
 // Create a context for stock data
@@ -91,7 +82,7 @@ function App() {
     <StockDataContext.Provider value={{ stockOptions, setStockOptions }}>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col font-sans transition-colors duration-300">
         {/* Notifications */}
-        <div className="fixed top-6 right-6 z-50 flex flex-col gap-3 items-end">
+        <div className="fixed top-16 right-6 z-50 flex flex-col gap-3 items-end">
           {notifications.map((n) => (
             <Notification key={n.id} type={n.type} onClose={() => removeNotification(n.id)}>
               {n.message}
@@ -102,11 +93,25 @@ function App() {
         <header className="flex items-center justify-between px-8 py-5 bg-white/90 shadow-sm backdrop-blur-md transition-all duration-300">
           <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Dashboard</h1>
           <button
-            className="p-2 bg-gray-200 rounded-full hover:bg-gray-300 flex items-center justify-center transition-colors duration-200"
+            className="p-2 bg-gray-00 rounded-full hover:bg-gray-300 flex items-center justify-center transition-colors duration-200"
             onClick={() => setSettingsOpen(true)}
             aria-label="Settings"
           >
-            <svg width="24" height="24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="2"/><path d="M12 8v4l3 3" strokeWidth="2"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6 text-blue-600"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.01c1.527-.878 3.286.88 2.408 2.408a1.724 1.724 0 001.01 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.01 2.573c.878 1.527-.88 3.286-2.408 2.408a1.724 1.724 0 00-2.572 1.01c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.01c-1.527.878-3.286-.88-2.408-2.408a1.724 1.724 0 00-1.01-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.01-2.573c-.878-1.527.88-3.286 2.408-2.408.996.573 2.25.06 2.573-1.01z"
+              />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
           </button>
         </header>
 

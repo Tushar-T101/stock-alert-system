@@ -7,6 +7,11 @@ import time
 import json
 import smtplib
 import asyncio
+from pydantic import BaseModel
+import os
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+import pandas as pd
 
 app = FastAPI()
 
@@ -120,10 +125,31 @@ PREV_EMAS = {}  # {(watchlist_id, symbol): {"EMA7": ..., "EMA21": ..., "EMA50": 
 
 def compute_indicators(symbol):
     try:
-        hist = yf.Ticker(symbol).history(period="1y", interval="1d")
+        from datetime import datetime
+        import pytz
+        ny = pytz.timezone('America/New_York')
+        ny_now = datetime.now(ny)
+        market_open = ny_now.hour > 9 or (ny_now.hour == 9 and ny_now.minute >= 30)
+        market_close = ny_now.hour < 16
+        ticker = yf.Ticker(symbol)
+        if market_open and market_close and ny_now.weekday() < 5:
+            hist = ticker.history(period="2d", interval="1m")
+        else:
+            hist = ticker.history(period="1y", interval="1d")
         if hist.empty:
+            print(f"[{symbol}] History is empty!")
             return {}
         close = hist['Close']
+        # Try to get the latest price
+        try:
+            live_price = ticker.fast_info['last_price']
+        except Exception:
+            live_price = None
+        print(f"[{symbol}] Last close in history: {close.index[-1]}, value: {close.iloc[-1]}, live_price: {live_price}")
+        # If live price is newer than last close, append it
+        if live_price and (abs(live_price - close.iloc[-1]) > 1e-6):
+            close = pd.concat([close, pd.Series([live_price], index=[pd.Timestamp.now(tz=ny)])])
+            print(f"[{symbol}] Appended live price {live_price} at {pd.Timestamp.now(tz=ny)}")
         ema7 = close.ewm(span=7).mean().iloc[-1]
         ema21 = close.ewm(span=21).mean().iloc[-1]
         ema50 = close.ewm(span=50).mean().iloc[-1]
@@ -136,6 +162,7 @@ def compute_indicators(symbol):
         rs = avg_gain / avg_loss if avg_loss != 0 else 0
         rsi = 100 - (100 / (1 + rs))
         macd = close.ewm(span=12).mean().iloc[-1] - close.ewm(span=26).mean().iloc[-1]
+        print(f"[{symbol}] EMA7: {ema7}, EMA21: {ema21}, EMA50: {ema50}, EMA200: {ema200}, RSI: {rsi}, MACD: {macd}")
         return {
             "EMA7": round(ema7,2),
             "EMA21": round(ema21,2),
@@ -144,30 +171,33 @@ def compute_indicators(symbol):
             "RSI": round(rsi,2),
             "MACD": round(macd,2)
         }
-    except Exception:
+    except Exception as e:
+        print("Indicator error:", e)
         return {}
 
-def send_email_alert(to_email, subject, message):
-    # Use EmailJS REST API (see below)
-    import requests
-    EMAILJS_SERVICE_ID = "your_service_id"
-    EMAILJS_TEMPLATE_ID = "your_template_id"
-    EMAILJS_USER_ID = "your_user_id"
-    EMAILJS_API_URL = "https://api.emailjs.com/api/v1.0/email/send"
-    payload = {
-        "service_id": EMAILJS_SERVICE_ID,
-        "template_id": EMAILJS_TEMPLATE_ID,
-        "user_id": EMAILJS_USER_ID,
-        "template_params": {
-            "to_email": to_email,
-            "subject": subject,
-            "message": message
-        }
-    }
+SENDGRID_API_KEY = "***REMOVED***"
+
+def send_email_alert(to_email, subject, message, name="Stock Alert System", time_str=None):
+    if not time_str:
+        time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    content = f"""
+    <b>{subject}</b><br>
+    <b>Time:</b> {time_str}<br>
+    <b>Message:</b><br>
+    {message}
+    """
+    mail = Mail(
+        from_email='tushar.tugnait02@gmail.com',  # Must be a verified sender in SendGrid
+        to_emails=to_email,
+        subject=subject,
+        html_content=content
+    )
     try:
-        requests.post(EMAILJS_API_URL, json=payload)
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(mail)
+        print("SendGrid response:", response.status_code, response.body)
     except Exception as e:
-        print("EmailJS error:", e)
+        print("SendGrid error:", e)
 
 def check_ema_crossovers(watchlist_id, symbol, prev, curr, user_email):
     alerts = []
@@ -204,6 +234,17 @@ def check_alerts(symbol, data, watchlist_id):
         ALERT_HISTORY.setdefault(symbol, []).append({"time": time.strftime("%Y-%m-%d %H:%M:%S"), "message": msg})
         if cond.get("email"):
             send_email_alert(cond["email"], f"Alert for {symbol}", msg)
+
+def is_market_open():
+    from datetime import datetime
+    import pytz
+    ny = pytz.timezone('America/New_York')
+    ny_now = datetime.now(ny)
+    day = ny_now.weekday()  # 0 = Monday, 6 = Sunday
+    if day >= 5:  # Saturday/Sunday
+        return False
+    mins = ny_now.hour * 60 + ny_now.minute
+    return mins >= 570 and mins < 960  # 9:30am to 4:00pm
 
 def refresh_prices():
     while True:
@@ -305,9 +346,19 @@ def get_stocks(
     unique = {r["symbol"]: r for r in results}
     return list(unique.values())
 
+class AlertRequest(BaseModel):
+    watchlist_id: int
+    priceAbove: float = None
+    rsiCross: float = None
+    email: str = None
+
 @app.post("/api/alerts")
-def set_alerts(watchlist_id: int, priceAbove: float = None, rsiCross: float = None, email: str = None):
-    USER_ALERTS[watchlist_id] = {"priceAbove": priceAbove, "rsiCross": rsiCross, "email": email}
+def set_alerts(req: AlertRequest):
+    USER_ALERTS[req.watchlist_id] = {
+        "priceAbove": req.priceAbove,
+        "rsiCross": req.rsiCross,
+        "email": req.email
+    }
     return {"ok": True}
 
 @app.get("/api/alert_history")
@@ -316,6 +367,7 @@ def get_alert_history(symbol: str):
 
 @app.post("/api/watchlist_stocks")
 def set_watchlist_stocks(watchlist_id: int = Body(...), symbols: list = Body(...)):
+    print("Updating WATCHLIST_STOCKS:", watchlist_id, symbols)
     WATCHLIST_STOCKS[watchlist_id] = symbols
     return {"ok": True}
 
@@ -327,18 +379,19 @@ def get_indicator_history(watchlist_id: int, symbol: str):
 def refresh_indicator_history(watchlist_id: int = Body(...), symbol: str = Body(...)):
     indicators = compute_indicators(symbol)
     key = (watchlist_id, symbol)
-    INDICATOR_HISTORY.setdefault(key, []).append({
-        "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "EMA7": indicators.get("EMA7"),
-        "EMA21": indicators.get("EMA21"),
-        "EMA50": indicators.get("EMA50"),
-        "EMA200": indicators.get("EMA200"),
-        "RSI": indicators.get("RSI"),
-        "MACD": indicators.get("MACD"),
-    })
-    # Limit history to last 100 points
-    if len(INDICATOR_HISTORY[key]) > 100:
-        INDICATOR_HISTORY[key] = INDICATOR_HISTORY[key][-100:]
+    append_indicator_history(key, indicators)
+    return {"ok": True}
+
+class TestAlertRequest(BaseModel):
+    watchlist_id: int
+    symbol: str
+    email: str
+
+@app.post("/api/test_alert")
+def test_alert(req: TestAlertRequest):
+    prev = {"EMA7": 99, "EMA21": 100, "EMA50": 100, "EMA200": 110}
+    curr = {"EMA7": 105, "EMA21": 100, "EMA50": 100, "EMA200": 110}
+    check_ema_crossovers(req.watchlist_id, req.symbol, prev, curr, req.email)
     return {"ok": True}
 
 # WebSocket support
@@ -356,3 +409,23 @@ async def websocket_prices(websocket: WebSocket):
             await asyncio.sleep(5)  # Send every 5 seconds
     except WebSocketDisconnect:
         clients.remove(websocket)
+
+def append_indicator_history(key, indicators):
+    now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    last = INDICATOR_HISTORY.get(key, [])[-1] if INDICATOR_HISTORY.get(key) else None
+    # Only append if indicators or time have changed
+    if not last or last["time"] != now_str or any(
+        last.get(k) != indicators.get(k) for k in ["EMA7", "EMA21", "EMA50", "EMA200", "RSI", "MACD"]
+    ):
+        INDICATOR_HISTORY.setdefault(key, []).append({
+            "time": now_str,
+            "EMA7": indicators.get("EMA7"),
+            "EMA21": indicators.get("EMA21"),
+            "EMA50": indicators.get("EMA50"),
+            "EMA200": indicators.get("EMA200"),
+            "RSI": indicators.get("RSI"),
+            "MACD": indicators.get("MACD"),
+        })
+        # Limit history to last 100 points
+        if len(INDICATOR_HISTORY[key]) > 100:
+            INDICATOR_HISTORY[key] = INDICATOR_HISTORY[key][-100:]

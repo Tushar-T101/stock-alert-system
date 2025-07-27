@@ -17,6 +17,13 @@ export default function IndicatorHistoryModal({
     { time: string; EMA?: number; EMA7?: number; EMA21?: number; EMA50?: number; EMA200?: number; RSI?: number; MACD?: number }[]
   >([])
   const [alertHistory, setAlertHistory] = useState<{ time: string; message: string }[]>([])
+  const [marketOpen, setMarketOpen] = useState(isMarketOpen())
+
+  useEffect(() => {
+    console.log("isMarketOpen:", marketOpen, isMarketOpen())
+    const interval = setInterval(() => setMarketOpen(isMarketOpen()), 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Indicator history polling
   useEffect(() => {
@@ -37,7 +44,7 @@ export default function IndicatorHistoryModal({
 
     if (open && tab === 'indicators') {
       fetchAndRefresh()
-      interval = setInterval(fetchAndRefresh, 5000)
+      interval = setInterval(fetchAndRefresh, 60000) // <-- 60 seconds
     }
     return () => {
       if (interval) clearInterval(interval)
@@ -110,7 +117,7 @@ export default function IndicatorHistoryModal({
                     </td>
                   </tr>
                 ) : (
-                  (!isMarketOpen() ? [history[history.length - 1]] : history.slice(-50).reverse()).map((h, i) => (
+                  (marketOpen ? history.slice(-50).reverse() : [history[history.length - 1]]).map((h, i) => (
                     <tr
                       key={h.time + (h.EMA7 ?? '') + (h.EMA21 ?? '') + (h.EMA50 ?? '') + (h.EMA200 ?? '')}
                       className={`border-b last:border-b-0 ${i === 0 ? 'fadein-row' : ''}`}

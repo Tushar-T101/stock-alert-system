@@ -13,7 +13,7 @@ type Stock = {
     RSI: boolean
     MACD: boolean
   }
-  EMA?: number
+  EMA7?: number
   RSI?: number
   MACD?: number
 }
@@ -49,7 +49,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
   const [alertHistory, setAlertHistory] = useState<{ time: string, message: string }[]>([])
   const [alertStatuses, setAlertStatuses] = useState<{ [symbol: string]: string }>({});
   const wsRef = useRef<WebSocket | null>(null)
-  const { stockOptions } = useContext(StockDataContext)
+  const { stockOptions, setStockOptions } = useContext(StockDataContext)
   const optionsForTab = stockOptions[activeTab] || []
   const watchlistSymbols = stocks.map(s => s.symbol);
   const [indicatorModal, setIndicatorModal] = useState<{ open: boolean; symbol: string } | null>(null)
@@ -63,7 +63,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
           const data = await res.json()
           const found = data.find((s: any) => s.symbol === stock.symbol)
           return found
-            ? { ...stock, EMA: found.EMA, RSI: found.RSI, MACD: found.MACD }
+            ? { ...stock, EMA7: found.EMA7, RSI: found.RSI, MACD: found.MACD }
             : stock
         })
       )
@@ -81,7 +81,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
       setStocks(prev =>
         prev.map(stock =>
           data[stock.symbol]
-            ? { ...stock, EMA: data[stock.symbol].EMA, RSI: data[stock.symbol].RSI, MACD: data[stock.symbol].MACD }
+            ? { ...stock, EMA7: data[stock.symbol].EMA7, RSI: data[stock.symbol].RSI, MACD: data[stock.symbol].MACD }
             : stock
         )
       )
@@ -228,23 +228,43 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
           >
             <div className="flex justify-between items-center">
               <span className="font-semibold text-lg">{stock.symbol}</span>
-              <button className="text-red-500 hover:text-red-700 transition" onClick={() => handleRemove(idx)}>Remove</button>
+              <button
+                className="text-red-500 hover:text-red-700 transition"
+                onClick={e => { e.stopPropagation(); handleRemove(idx); }}
+                title="Remove"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 7h12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10 11v6m4-6v6"
+                  />
+                </svg>
+              </button>
             </div>
-            <div className="flex gap-2">
-              <label className={`px-2 py-1 rounded text-xs cursor-pointer transition ${stock.indicators.EMA ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
-                <input type="checkbox" checked={stock.indicators.EMA} onChange={() => handleIndicatorChange(idx, 'EMA')} /> EMA
-              </label>
-              <label className={`px-2 py-1 rounded text-xs cursor-pointer transition ${stock.indicators.RSI ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                <input type="checkbox" checked={stock.indicators.RSI} onChange={() => handleIndicatorChange(idx, 'RSI')} /> RSI
-              </label>
-              <label className={`px-2 py-1 rounded text-xs cursor-pointer transition ${stock.indicators.MACD ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-400'}`}>
-                <input type="checkbox" checked={stock.indicators.MACD} onChange={() => handleIndicatorChange(idx, 'MACD')} /> MACD
-              </label>
-            </div>
+            {/* Removed indicator checkboxes */}
             <div className="flex gap-2 mt-2">
-              <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">EMA: {stock.EMA ?? '--'}</span>
-              <span className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs">RSI: {stock.RSI ?? '--'}</span>
-              <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs">MACD: {stock.MACD ?? '--'}</span>
+              <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
+                EMA7: {stock.EMA7 ?? '--'}
+              </span>
+              <span className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs">
+                RSI: {stock.RSI ?? '--'}
+              </span>
+              <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs">
+                MACD: {stock.MACD ?? '--'}
+              </span>
             </div>
             <div className="text-sm text-yellow-600 min-h-[1.5em]">
               {alertStatuses[stock.symbol] || '[Alert status here]'}
