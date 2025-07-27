@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useContext } from 'react'
 import AlertConditionsModal from './AlertConditionsModal'
 import AlertHistoryModal from './AlertHistoryModal'
 import { StockDataContext } from '../App'
+import IndicatorHistoryModal from './IndicatorHistoryModal'
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL
 
@@ -51,6 +52,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
   const { stockOptions } = useContext(StockDataContext)
   const optionsForTab = stockOptions[activeTab] || []
   const watchlistSymbols = stocks.map(s => s.symbol);
+  const [indicatorModal, setIndicatorModal] = useState<{ open: boolean; symbol: string } | null>(null)
 
   // 1. Fetch initial indicator values for watchlist stocks ONCE
   useEffect(() => {
@@ -129,6 +131,15 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
     fetchAlertStatuses()
   }, [stocks])
 
+  // 5. Sync watchlist stocks with backend
+  useEffect(() => {
+    fetch(`${backendUrl}/api/watchlist_stocks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ watchlist_id: id, symbols: stocks.map(s => s.symbol) })
+    })
+  }, [stocks, id])
+
   const handleAddStock = () => {
     if (selectedStock && !stocks.find(s => s.symbol === selectedStock)) {
       setStocks([...stocks, { symbol: selectedStock, indicators: { EMA: true, RSI: true, MACD: true } }])
@@ -147,6 +158,16 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
     setStocks([...stocks, ...newStocks]);
     setSelectedStocks([]);
     setAddModal(false);
+    // After setStocks([...stocks, ...newStocks]);
+    Promise.all(
+      newStocks.map(ns =>
+        fetch(`${backendUrl}/api/indicator_history/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ watchlist_id: id, symbol: ns.symbol })
+        })
+      )
+    )
   };
 
   const handleRemove = (idx: number) => {
@@ -200,7 +221,11 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {stocks.map((stock, idx) => (
-          <div key={stock.symbol} className="bg-white rounded-xl shadow-md p-6 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg animate-fadein">
+          <div
+            key={stock.symbol}
+            className="bg-white rounded-xl shadow-md p-6 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg animate-fadein cursor-pointer"
+            onClick={() => setIndicatorModal({ open: true, symbol: stock.symbol })}
+          >
             <div className="flex justify-between items-center">
               <span className="font-semibold text-lg">{stock.symbol}</span>
               <button className="text-red-500 hover:text-red-700 transition" onClick={() => handleRemove(idx)}>Remove</button>
@@ -224,9 +249,6 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
             <div className="text-sm text-yellow-600 min-h-[1.5em]">
               {alertStatuses[stock.symbol] || '[Alert status here]'}
             </div>
-            <button className="mt-2 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs transition" onClick={() => handleShowHistory(stock.symbol)}>
-              View Alert History
-            </button>
           </div>
         ))}
       </div>
@@ -338,6 +360,14 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
             </div>
           </div>
         </div>
+      )}
+      {indicatorModal?.open && (
+        <IndicatorHistoryModal
+          open={indicatorModal.open}
+          onClose={() => setIndicatorModal(null)}
+          watchlistId={id}
+          symbol={indicatorModal.symbol}
+        />
       )}
     </div>
   )

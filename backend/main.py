@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import requests
@@ -114,6 +114,8 @@ def fetch_crypto(symbol):
 PRICE_CACHE = {}
 ALERT_HISTORY = {}  # {symbol: [ {time, message} ]}
 USER_ALERTS = {}    # {watchlist_id: {priceAbove, rsiCross, email}}
+WATCHLIST_STOCKS = {}  # {watchlist_id: [symbol, ...]}
+INDICATOR_HISTORY = {}  # {(watchlist_id, symbol): [ {time, EMA, RSI, MACD} ]}
 
 def compute_indicators(symbol):
     try:
@@ -169,12 +171,24 @@ def refresh_prices():
                         if data: data.update(indicators)
                         if data:
                             PRICE_CACHE[symbol] = data
-                            for wid in USER_ALERTS:
-                                check_alerts(symbol, data, wid)
+                    # --- NEW: Store indicator history for all watchlist stocks in this batch
+                    for wid, symbols in WATCHLIST_STOCKS.items():
+                        for watch_symbol in symbols:
+                            if watch_symbol in batch_data:
+                                key = (wid, watch_symbol)
+                                INDICATOR_HISTORY.setdefault(key, []).append({
+                                    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                                    "EMA": batch_data[watch_symbol].get("EMA"),
+                                    "RSI": batch_data[watch_symbol].get("RSI"),
+                                    "MACD": batch_data[watch_symbol].get("MACD"),
+                                })
+                                # Limit history to last 100 points
+                                if len(INDICATOR_HISTORY[key]) > 100:
+                                    INDICATOR_HISTORY[key] = INDICATOR_HISTORY[key][-100:]
                 else:
                     continue
-            time.sleep(1)  # Short sleep between batches
-        time.sleep(30)  # Refresh every 30 seconds
+            time.sleep(1)
+        time.sleep(30)
 
 # Start background thread
 threading.Thread(target=refresh_prices, daemon=True).start()
@@ -232,6 +246,30 @@ def set_alerts(watchlist_id: int, priceAbove: float = None, rsiCross: float = No
 @app.get("/api/alert_history")
 def get_alert_history(symbol: str):
     return ALERT_HISTORY.get(symbol, [])
+
+@app.post("/api/watchlist_stocks")
+def set_watchlist_stocks(watchlist_id: int = Body(...), symbols: list = Body(...)):
+    WATCHLIST_STOCKS[watchlist_id] = symbols
+    return {"ok": True}
+
+@app.get("/api/indicator_history")
+def get_indicator_history(watchlist_id: int, symbol: str):
+    return INDICATOR_HISTORY.get((watchlist_id, symbol), [])
+
+@app.post("/api/indicator_history/refresh")
+def refresh_indicator_history(watchlist_id: int = Body(...), symbol: str = Body(...)):
+    indicators = compute_indicators(symbol)
+    key = (watchlist_id, symbol)
+    INDICATOR_HISTORY.setdefault(key, []).append({
+        "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "EMA": indicators.get("EMA"),
+        "RSI": indicators.get("RSI"),
+        "MACD": indicators.get("MACD"),
+    })
+    # Limit history to last 100 points
+    if len(INDICATOR_HISTORY[key]) > 100:
+        INDICATOR_HISTORY[key] = INDICATOR_HISTORY[key][-100:]
+    return {"ok": True}
 
 # WebSocket support
 # Store connected clients

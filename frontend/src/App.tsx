@@ -6,7 +6,7 @@ import WatchlistPage from './components/WatchlistPage'
 import Notification from './components/Notification'
 import './styles/notifications.css'
 
-function isMarketOpen() {
+export function isMarketOpen() {
   // Get current time in EST (UTC-5 or UTC-4 for daylight saving)
   const now = new Date()
   // Convert to UTC, then to EST (New York time)
