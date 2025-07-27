@@ -116,14 +116,18 @@ ALERT_HISTORY = {}  # {symbol: [ {time, message} ]}
 USER_ALERTS = {}    # {watchlist_id: {priceAbove, rsiCross, email}}
 WATCHLIST_STOCKS = {}  # {watchlist_id: [symbol, ...]}
 INDICATOR_HISTORY = {}  # {(watchlist_id, symbol): [ {time, EMA, RSI, MACD} ]}
+PREV_EMAS = {}  # {(watchlist_id, symbol): {"EMA7": ..., "EMA21": ..., "EMA50": ..., "EMA200": ...}}
 
 def compute_indicators(symbol):
     try:
-        hist = yf.Ticker(symbol).history(period="3mo", interval="1d")
+        hist = yf.Ticker(symbol).history(period="1y", interval="1d")
         if hist.empty:
             return {}
         close = hist['Close']
-        ema = close.ewm(span=20).mean().iloc[-1]
+        ema7 = close.ewm(span=7).mean().iloc[-1]
+        ema21 = close.ewm(span=21).mean().iloc[-1]
+        ema50 = close.ewm(span=50).mean().iloc[-1]
+        ema200 = close.ewm(span=200).mean().iloc[-1]
         delta = close.diff()
         up = delta.clip(lower=0)
         down = -1 * delta.clip(upper=0)
@@ -132,14 +136,62 @@ def compute_indicators(symbol):
         rs = avg_gain / avg_loss if avg_loss != 0 else 0
         rsi = 100 - (100 / (1 + rs))
         macd = close.ewm(span=12).mean().iloc[-1] - close.ewm(span=26).mean().iloc[-1]
-        return {"EMA": round(ema,2), "RSI": round(rsi,2), "MACD": round(macd,2)}
+        return {
+            "EMA7": round(ema7,2),
+            "EMA21": round(ema21,2),
+            "EMA50": round(ema50,2),
+            "EMA200": round(ema200,2),
+            "RSI": round(rsi,2),
+            "MACD": round(macd,2)
+        }
     except Exception:
         return {}
 
 def send_email_alert(to_email, subject, message):
-    # Use EmailJS from frontend for demo, or SMTP here for production
-    pass
+    # Use EmailJS REST API (see below)
+    import requests
+    EMAILJS_SERVICE_ID = "your_service_id"
+    EMAILJS_TEMPLATE_ID = "your_template_id"
+    EMAILJS_USER_ID = "your_user_id"
+    EMAILJS_API_URL = "https://api.emailjs.com/api/v1.0/email/send"
+    payload = {
+        "service_id": EMAILJS_SERVICE_ID,
+        "template_id": EMAILJS_TEMPLATE_ID,
+        "user_id": EMAILJS_USER_ID,
+        "template_params": {
+            "to_email": to_email,
+            "subject": subject,
+            "message": message
+        }
+    }
+    try:
+        requests.post(EMAILJS_API_URL, json=payload)
+    except Exception as e:
+        print("EmailJS error:", e)
 
+def check_ema_crossovers(watchlist_id, symbol, prev, curr, user_email):
+    alerts = []
+    # Short-term breakout
+    if prev and prev["EMA7"] < prev["EMA21"] and prev["EMA7"] < prev["EMA50"] and curr["EMA7"] >= curr["EMA21"] and curr["EMA7"] >= curr["EMA50"]:
+        alerts.append("Short-term breakout: 7-day EMA crossed above 21-day and 50-day EMA.")
+    # Long-term breakout
+    if prev and prev["EMA7"] < prev["EMA200"] and curr["EMA7"] >= curr["EMA200"]:
+        alerts.append("Long-term breakout: 7-day EMA crossed above 200-day EMA.")
+    # Short-term breakdown
+    if prev and prev["EMA7"] > prev["EMA21"] and prev["EMA7"] > prev["EMA50"] and curr["EMA7"] <= curr["EMA21"] and curr["EMA7"] <= curr["EMA50"]:
+        alerts.append("Short-term breakdown: 7-day EMA crossed below 21-day and 50-day EMA.")
+    # Long-term breakdown
+    if prev and prev["EMA7"] > prev["EMA200"] and curr["EMA7"] <= curr["EMA200"]:
+        alerts.append("Long-term breakdown: 7-day EMA crossed below 200-day EMA.")
+    for alert in alerts:
+        # Record alert
+        ALERT_HISTORY.setdefault(symbol, []).append({
+            "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "message": alert
+        })
+        # Send email
+        if user_email:
+            send_email_alert(user_email, f"EMA Alert for {symbol}", f"{alert}\n\nSymbol: {symbol}\nWatchlist: {watchlist_id}\nTime: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 def check_alerts(symbol, data, watchlist_id):
     cond = USER_ALERTS.get(watchlist_id)
     if not cond: return
@@ -176,15 +228,30 @@ def refresh_prices():
                         for watch_symbol in symbols:
                             if watch_symbol in batch_data:
                                 key = (wid, watch_symbol)
+                                indicators = batch_data[watch_symbol]
                                 INDICATOR_HISTORY.setdefault(key, []).append({
                                     "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-                                    "EMA": batch_data[watch_symbol].get("EMA"),
-                                    "RSI": batch_data[watch_symbol].get("RSI"),
-                                    "MACD": batch_data[watch_symbol].get("MACD"),
+                                    "EMA7": indicators.get("EMA7"),
+                                    "EMA21": indicators.get("EMA21"),
+                                    "EMA50": indicators.get("EMA50"),
+                                    "EMA200": indicators.get("EMA200"),
+                                    "RSI": indicators.get("RSI"),
+                                    "MACD": indicators.get("MACD"),
                                 })
                                 # Limit history to last 100 points
                                 if len(INDICATOR_HISTORY[key]) > 100:
                                     INDICATOR_HISTORY[key] = INDICATOR_HISTORY[key][-100:]
+                                # --- EMA crossover detection ---
+                                prev = PREV_EMAS.get(key)
+                                curr = {
+                                    "EMA7": indicators.get("EMA7"),
+                                    "EMA21": indicators.get("EMA21"),
+                                    "EMA50": indicators.get("EMA50"),
+                                    "EMA200": indicators.get("EMA200"),
+                                }
+                                user_email = USER_ALERTS.get(wid, {}).get("email")  # or fetch from user profile/settings
+                                check_ema_crossovers(wid, watch_symbol, prev, curr, user_email)
+                                PREV_EMAS[key] = curr
                 else:
                     continue
             time.sleep(1)
@@ -262,7 +329,10 @@ def refresh_indicator_history(watchlist_id: int = Body(...), symbol: str = Body(
     key = (watchlist_id, symbol)
     INDICATOR_HISTORY.setdefault(key, []).append({
         "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "EMA": indicators.get("EMA"),
+        "EMA7": indicators.get("EMA7"),
+        "EMA21": indicators.get("EMA21"),
+        "EMA50": indicators.get("EMA50"),
+        "EMA200": indicators.get("EMA200"),
         "RSI": indicators.get("RSI"),
         "MACD": indicators.get("MACD"),
     })

@@ -12,9 +12,9 @@ export default function IndicatorHistoryModal({
   watchlistId: number
   symbol: string
 }) {
-  const [tab, setTab] = useState<'indicators' | 'alerts'>('indicators')
+  const [tab, setTab] = useState<'indicators' | 'alerts' | 'emaChart'>('indicators')
   const [history, setHistory] = useState<
-    { time: string; EMA?: number; RSI?: number; MACD?: number }[]
+    { time: string; EMA?: number; EMA7?: number; EMA21?: number; EMA50?: number; EMA200?: number; RSI?: number; MACD?: number }[]
   >([])
   const [alertHistory, setAlertHistory] = useState<{ time: string; message: string }[]>([])
 
@@ -55,9 +55,15 @@ export default function IndicatorHistoryModal({
 
   if (!open) return null
 
+  // Helper to get TradingView symbol (e.g., "AAPL" -> "NASDAQ:AAPL")
+  const getTradingViewSymbol = (sym: string) => {
+    if (/^[A-Z]+$/.test(sym)) return `NASDAQ:${sym}`
+    return sym
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 animate-fadein">
-      <div className="bg-white rounded-xl shadow-2xl p-8 min-w-[350px] max-w-[95vw] transition-all duration-300 w-[500px]">
+      <div className="bg-white rounded-xl shadow-2xl p-8 min-w-[350px] max-w-[95vw] transition-all duration-300 w-[700px]">
         <h3 className="text-lg font-bold mb-4">
           {symbol} History
         </h3>
@@ -75,19 +81,23 @@ export default function IndicatorHistoryModal({
           >
             Alert History
           </button>
+          <button
+            className={`px-3 py-1 rounded-full text-xs font-medium ${tab === 'emaChart' ? 'bg-blue-900 text-white' : 'bg-gray-200 text-gray-700'} transition`}
+            onClick={() => setTab('emaChart')}
+          >
+            EMA Chart
+          </button>
         </div>
         <div className="max-h-[400px] overflow-y-auto">
-          {!isMarketOpen() && (
-            <div className="text-yellow-700 bg-yellow-50 rounded px-3 py-2 mb-2 text-xs font-medium">
-              US Market is closed. Showing last available reading.
-            </div>
-          )}
           {tab === 'indicators' ? (
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-gray-500 border-b">
                   <th className="py-1 px-2 text-left">Time</th>
-                  <th className="py-1 px-2">EMA</th>
+                  <th className="py-1 px-2">EMA7</th>
+                  <th className="py-1 px-2">EMA21</th>
+                  <th className="py-1 px-2">EMA50</th>
+                  <th className="py-1 px-2">EMA200</th>
                   <th className="py-1 px-2">RSI</th>
                   <th className="py-1 px-2">MACD</th>
                 </tr>
@@ -95,18 +105,21 @@ export default function IndicatorHistoryModal({
               <tbody>
                 {history.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="text-center text-gray-400 py-4">
+                    <td colSpan={7} className="text-center text-gray-400 py-4">
                       No indicator data yet.
                     </td>
                   </tr>
                 ) : (
                   (!isMarketOpen() ? [history[history.length - 1]] : history.slice(-50).reverse()).map((h, i) => (
                     <tr
-                      key={h.time + (h.EMA ?? '') + (h.RSI ?? '') + (h.MACD ?? '')}
+                      key={h.time + (h.EMA7 ?? '') + (h.EMA21 ?? '') + (h.EMA50 ?? '') + (h.EMA200 ?? '')}
                       className={`border-b last:border-b-0 ${i === 0 ? 'fadein-row' : ''}`}
                     >
                       <td className="py-1 px-2 font-mono">{h.time}</td>
-                      <td className="py-1 px-2 text-blue-700">{h.EMA ?? '--'}</td>
+                      <td className="py-1 px-2 text-blue-700">{h.EMA7 ?? '--'}</td>
+                      <td className="py-1 px-2 text-blue-700">{h.EMA21 ?? '--'}</td>
+                      <td className="py-1 px-2 text-blue-700">{h.EMA50 ?? '--'}</td>
+                      <td className="py-1 px-2 text-blue-700">{h.EMA200 ?? '--'}</td>
                       <td className="py-1 px-2 text-green-700">{h.RSI ?? '--'}</td>
                       <td className="py-1 px-2 text-purple-700">{h.MACD ?? '--'}</td>
                     </tr>
@@ -114,7 +127,7 @@ export default function IndicatorHistoryModal({
                 )}
               </tbody>
             </table>
-          ) : (
+          ) : tab === 'alerts' ? (
             <div className="space-y-2">
               {alertHistory.length === 0 ? (
                 <div className="text-gray-400 text-center py-4">No alerts triggered yet.</div>
@@ -125,6 +138,21 @@ export default function IndicatorHistoryModal({
                   </div>
                 ))
               )}
+            </div>
+          ) : (
+            // EMA Chart tab
+            <div className="w-full h-[400px] flex flex-col">
+              <div className="text-xs text-yellow-700 bg-yellow-50 rounded px-3 py-2 mb-2 font-medium">
+                Tip: To view EMA lines, click <b>Indicators</b> on the chart and add EMA with periods 7, 21, 50, 200.
+              </div>
+              <iframe
+                title={`${symbol} EMA Chart`}
+                src={`https://www.tradingview.com/widgetembed/?symbol=${getTradingViewSymbol(symbol)}&interval=60&theme=light&style=1`}
+                width="100%"
+                height="100%"
+                style={{ border: 'none', borderRadius: '8px', minHeight: '400px' }}
+                allowFullScreen
+              />
             </div>
           )}
         </div>
