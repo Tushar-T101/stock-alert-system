@@ -1,16 +1,26 @@
 import { useEffect, useState } from 'react'
 import { isMarketOpen } from '../App.tsx'
+import { INDICATORS } from '../indicators'
+
+function getTradingViewSymbol(symbol: string) {
+  // For US stocks, prefix with NASDAQ: or NYSE: as needed, fallback to just the symbol
+  if (symbol.endsWith('-USD')) return `CRYPTO:${symbol.replace('-USD', 'USD')}`
+  if (/^[A-Z]+$/.test(symbol)) return `NASDAQ:${symbol}`
+  return symbol
+}
 
 export default function IndicatorHistoryModal({
   open,
   onClose,
   watchlistId,
   symbol,
+  indicators,
 }: {
   open: boolean
   onClose: () => void
   watchlistId: number
   symbol: string
+  indicators: string[]
 }) {
   const [tab, setTab] = useState<'indicators' | 'alerts' | 'emaChart'>('indicators')
   const [history, setHistory] = useState<
@@ -62,11 +72,8 @@ export default function IndicatorHistoryModal({
 
   if (!open) return null
 
-  // Helper to get TradingView symbol (e.g., "AAPL" -> "NASDAQ:AAPL")
-  const getTradingViewSymbol = (sym: string) => {
-    if (/^[A-Z]+$/.test(sym)) return `NASDAQ:${sym}`
-    return sym
-  }
+  // Get indicator meta info
+  const indicatorMeta = INDICATORS.filter(ind => indicators.includes(ind.key))
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 animate-fadein">
@@ -101,34 +108,28 @@ export default function IndicatorHistoryModal({
               <thead>
                 <tr className="text-gray-500 border-b">
                   <th className="py-1 px-2 text-left">Time</th>
-                  <th className="py-1 px-2">EMA7</th>
-                  <th className="py-1 px-2">EMA21</th>
-                  <th className="py-1 px-2">EMA50</th>
-                  <th className="py-1 px-2">EMA200</th>
-                  <th className="py-1 px-2">RSI</th>
-                  <th className="py-1 px-2">MACD</th>
+                  {indicatorMeta.map(ind => (
+                    <th key={ind.key} className="py-1 px-2">{ind.label}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {history.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center text-gray-400 py-4">
+                    <td colSpan={indicatorMeta.length + 1} className="text-center text-gray-400 py-4">
                       No indicator data yet.
                     </td>
                   </tr>
                 ) : (
                   (marketOpen ? history.slice(-50).reverse() : [history[history.length - 1]]).map((h, i) => (
                     <tr
-                      key={h.time + (h.EMA7 ?? '') + (h.EMA21 ?? '') + (h.EMA50 ?? '') + (h.EMA200 ?? '')}
+                      key={h.time + indicatorMeta.map(ind => h[ind.key] ?? '').join('')}
                       className={`border-b last:border-b-0 ${i === 0 ? 'fadein-row' : ''}`}
                     >
                       <td className="py-1 px-2 font-mono">{h.time}</td>
-                      <td className="py-1 px-2 text-blue-700">{h.EMA7 ?? '--'}</td>
-                      <td className="py-1 px-2 text-blue-700">{h.EMA21 ?? '--'}</td>
-                      <td className="py-1 px-2 text-blue-700">{h.EMA50 ?? '--'}</td>
-                      <td className="py-1 px-2 text-blue-700">{h.EMA200 ?? '--'}</td>
-                      <td className="py-1 px-2 text-green-700">{h.RSI ?? '--'}</td>
-                      <td className="py-1 px-2 text-purple-700">{h.MACD ?? '--'}</td>
+                      {indicatorMeta.map(ind => (
+                        <td key={ind.key} className="py-1 px-2">{h[ind.key] ?? '--'}</td>
+                      ))}
                     </tr>
                   ))
                 )}

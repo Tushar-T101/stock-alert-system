@@ -3,8 +3,11 @@ import AlertConditionsModal from './AlertConditionsModal'
 import AlertHistoryModal from './AlertHistoryModal'
 import { StockDataContext } from '../App'
 import IndicatorHistoryModal from './IndicatorHistoryModal'
+import { INDICATORS } from '../indicators'
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL
+
+const ICONS = ['📈','💼','🚀','💡','⭐','🔔','🧠','🛡️']
 
 type Stock = {
   symbol: string
@@ -32,6 +35,18 @@ const TABS = [
   'Stocks', 'Funds', 'Futures', 'Forex', 'Crypto', 'Indices', 'Bonds', 'Economy', 'Options'
 ]
 
+// Tooltip helper (optional)
+function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <span className="relative group">
+      {children}
+      <span className="absolute left-1/2 -translate-x-1/2 mt-2 z-50 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg">
+        {text}
+      </span>
+    </span>
+  )
+}
+
 export default function WatchlistPage({ id, onBack }: { id: number; onBack: () => void }) {
   const [stocks, setStocks] = useState<Stock[]>([
     { symbol: 'AAPL', indicators: { EMA: true, RSI: true, MACD: true } },
@@ -48,11 +63,34 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
   const [historyModal, setHistoryModal] = useState<{ open: boolean, symbol: string } | null>(null)
   const [alertHistory, setAlertHistory] = useState<{ time: string, message: string }[]>([])
   const [alertStatuses, setAlertStatuses] = useState<{ [symbol: string]: string }>({});
+  const [watchlist, setWatchlist] = useState<any>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const { stockOptions, setStockOptions } = useContext(StockDataContext)
   const optionsForTab = stockOptions[activeTab] || []
   const watchlistSymbols = stocks.map(s => s.symbol);
   const [indicatorModal, setIndicatorModal] = useState<{ open: boolean; symbol: string } | null>(null)
+
+  // --- Settings modal state ---
+  const [editModal, setEditModal] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newIcon, setNewIcon] = useState(ICONS[0])
+  const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
+
+  useEffect(() => {
+    // Load watchlist from localStorage
+    const saved = localStorage.getItem('watchlists')
+    if (saved) {
+      const found = JSON.parse(saved).find((w: any) => w.id === id)
+      setWatchlist(found)
+      if (found) {
+        setNewName(found.name)
+        setNewDesc(found.description || '')
+        setNewIcon(found.icon || ICONS[0])
+        setSelectedIndicators(found.indicators || [])
+      }
+    }
+  }, [id])
 
   // 1. Fetch initial indicator values for watchlist stocks ONCE
   useEffect(() => {
@@ -204,7 +242,40 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
       <button className="mb-4 text-blue-600 underline" onClick={onBack}>
         ← Back to Dashboard
       </button>
-      <h2 className="text-2xl font-bold mb-4">Watchlist #{id}</h2>
+      <div className="flex items-center gap-2 mb-4">
+        <h2 className="text-2xl font-bold">Watchlist #{id}</h2>
+        <button
+          className="flex items-center gap-1 px-3 py-1 rounded-full text-gray-700 text-sm font-medium transition"
+          onClick={() => {
+            if (watchlist) {
+              setEditModal(true)
+              setNewName(watchlist.name)
+              setNewDesc(watchlist.description || '')
+              setNewIcon(watchlist.icon || ICONS[0])
+              setSelectedIndicators(watchlist.indicators || [])
+            }
+          }}
+          title="Watchlist Settings"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="text-blue-600"
+            width="24"
+            height="24"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.01c1.527-.878 3.286.88 2.408 2.408a1.724 1.724 0 001.01 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.01 2.573c.878 1.527-.88 3.286-2.408 2.408a1.724 1.724 0 00-2.572 1.01c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.01c-1.527.878-3.286-.88-2.408-2.408a1.724 1.724 0 00-1.01-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.01-2.573c-.878-1.527.88-3.286 2.408-2.408.996.573 2.25.06 2.573-1.01z"
+            />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
+      </div>
       <div className="flex gap-4 mb-6">
         <button
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -381,12 +452,142 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
           </div>
         </div>
       )}
-      {indicatorModal?.open && (
+      {/* --- Settings Modal --- */}
+      {editModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 animate-fadein">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 min-w-[350px] max-w-[95vw] w-full sm:w-[440px] transition-all duration-300">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <span role="img" aria-label="Edit">✏️</span> Edit Watchlist
+            </h3>
+            <label className="block font-semibold mb-2 text-gray-700">Name</label>
+            <input
+              type="text"
+              className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+              placeholder="Watchlist name"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              autoFocus
+            />
+            <label className="block font-semibold mb-2 text-gray-700">Description <span className="text-xs text-gray-400">(optional)</span></label>
+            <textarea
+              className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-200 transition resize-none"
+              placeholder="Describe this watchlist (optional)"
+              rows={2}
+              value={newDesc}
+              onChange={e => setNewDesc(e.target.value)}
+            />
+            <label className="block font-semibold mb-2 text-gray-700">Icon</label>
+            <div className="flex gap-2 mb-4" title="Choose an icon">
+              {ICONS.map(icon => (
+                <Tooltip key={icon} text="Choose an icon">
+                  <button
+                    type="button"
+                    className={`text-2xl rounded-full p-1 border-2 transition
+                      ${icon === newIcon ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:border-blue-300'}`}
+                    onClick={() => setNewIcon(icon)}
+                    aria-label={`Choose icon ${icon}`}
+                  >
+                    {icon}
+                  </button>
+                </Tooltip>
+              ))}
+            </div>
+            <label className="block font-semibold mb-2 text-gray-700">
+              Indicators
+              <span className="text-xs text-gray-400 ml-2">(applies to all stocks)</span>
+            </label>
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                className="text-xs px-2 py-1 bg-blue-100 rounded hover:bg-blue-200"
+                onClick={() => setSelectedIndicators(INDICATORS.map(i => i.key))}
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                className="text-xs px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
+                onClick={() => setSelectedIndicators([])}
+              >
+                Clear All
+              </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+              {INDICATORS.map(ind => (
+                <Tooltip key={ind.key} text={ind.label}>
+                  <label
+                    className={`flex items-center gap-1 text-sm px-2 py-1 rounded cursor-pointer transition
+                      ${selectedIndicators.includes(ind.key) ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
+                    title={ind.label}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIndicators.includes(ind.key)}
+                      onChange={() =>
+                        setSelectedIndicators(sel =>
+                          sel.includes(ind.key)
+                            ? sel.filter(k => k !== ind.key)
+                            : [...sel, ind.key]
+                        )
+                      }
+                      className="accent-blue-600"
+                    />
+                    {ind.label}
+                  </label>
+                </Tooltip>
+              ))}
+            </div>
+            {selectedIndicators.length === 0 && (
+              <div className="text-xs text-red-600 mb-2">Select at least one indicator.</div>
+            )}
+            <div className="flex gap-2 mt-6">
+              <button
+                className={`px-4 py-2 bg-blue-600 text-white rounded font-semibold transition ${
+                  !newName.trim() || selectedIndicators.length === 0
+                    ? 'opacity-50 cursor-not-allowed'
+                    : ''
+                }`}
+                onClick={() => {
+                  // Save changes to localStorage
+                  const saved = localStorage.getItem('watchlists')
+                  if (saved) {
+                    const arr = JSON.parse(saved)
+                    const idx = arr.findIndex((w: any) => w.id === id)
+                    if (idx !== -1) {
+                      arr[idx] = {
+                        ...arr[idx],
+                        name: newName,
+                        description: newDesc,
+                        icon: newIcon,
+                        indicators: selectedIndicators,
+                      }
+                      localStorage.setItem('watchlists', JSON.stringify(arr))
+                      setWatchlist(arr[idx])
+                    }
+                  }
+                  setEditModal(false)
+                }}
+                disabled={!newName.trim() || selectedIndicators.length === 0}
+              >
+                Save
+              </button>
+              <button
+                className="px-4 py-2 bg-gray-200 rounded font-semibold"
+                onClick={() => setEditModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {indicatorModal?.open && watchlist && (
         <IndicatorHistoryModal
           open={indicatorModal.open}
           onClose={() => setIndicatorModal(null)}
           watchlistId={id}
           symbol={indicatorModal.symbol}
+          indicators={watchlist.indicators}
         />
       )}
     </div>

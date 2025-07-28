@@ -12,6 +12,7 @@ import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 import pandas as pd
+import ta
 
 app = FastAPI()
 
@@ -140,37 +141,45 @@ def compute_indicators(symbol):
             print(f"[{symbol}] History is empty!")
             return {}
         close = hist['Close']
-        # Try to get the latest price
-        try:
-            live_price = ticker.fast_info['last_price']
-        except Exception:
-            live_price = None
-        print(f"[{symbol}] Last close in history: {close.index[-1]}, value: {close.iloc[-1]}, live_price: {live_price}")
-        # If live price is newer than last close, append it
-        if live_price and (abs(live_price - close.iloc[-1]) > 1e-6):
-            close = pd.concat([close, pd.Series([live_price], index=[pd.Timestamp.now(tz=ny)])])
-            print(f"[{symbol}] Appended live price {live_price} at {pd.Timestamp.now(tz=ny)}")
-        ema7 = close.ewm(span=7).mean().iloc[-1]
-        ema21 = close.ewm(span=21).mean().iloc[-1]
-        ema50 = close.ewm(span=50).mean().iloc[-1]
-        ema200 = close.ewm(span=200).mean().iloc[-1]
-        delta = close.diff()
-        up = delta.clip(lower=0)
-        down = -1 * delta.clip(upper=0)
-        avg_gain = up.rolling(window=14).mean().iloc[-1]
-        avg_loss = down.rolling(window=14).mean().iloc[-1]
-        rs = avg_gain / avg_loss if avg_loss != 0 else 0
-        rsi = 100 - (100 / (1 + rs))
-        macd = close.ewm(span=12).mean().iloc[-1] - close.ewm(span=26).mean().iloc[-1]
-        print(f"[{symbol}] EMA7: {ema7}, EMA21: {ema21}, EMA50: {ema50}, EMA200: {ema200}, RSI: {rsi}, MACD: {macd}")
-        return {
-            "EMA7": round(ema7,2),
-            "EMA21": round(ema21,2),
-            "EMA50": round(ema50,2),
-            "EMA200": round(ema200,2),
-            "RSI": round(rsi,2),
-            "MACD": round(macd,2)
-        }
+        high = hist['High']
+        low = hist['Low']
+        volume = hist['Volume']
+        df = pd.DataFrame({'close': close, 'high': high, 'low': low, 'volume': volume})
+
+        # Compute indicators using ta
+        df['EMA7'] = ta.trend.ema_indicator(df['close'], window=7)
+        df['EMA21'] = ta.trend.ema_indicator(df['close'], window=21)
+        df['EMA50'] = ta.trend.ema_indicator(df['close'], window=50)
+        df['EMA200'] = ta.trend.ema_indicator(df['close'], window=200)
+        df['SMA20'] = ta.trend.sma_indicator(df['close'], window=20)
+        df['SMA50'] = ta.trend.sma_indicator(df['close'], window=50)
+        bb = ta.volatility.BollingerBands(df['close'], window=20)
+        df['UpperBB'] = bb.bollinger_hband()
+        df['LowerBB'] = bb.bollinger_lband()
+        df['RSI'] = ta.momentum.rsi(df['close'], window=14)
+        df['MACD'] = ta.trend.macd(df['close'])
+        stoch = ta.momentum.StochasticOscillator(df['high'], df['low'], df['close'], window=14, smooth_window=3)
+        df['STOCH'] = stoch.stoch()
+        df['ADX'] = ta.trend.adx(df['high'], df['low'], df['close'], window=14)
+        df['CCI'] = ta.trend.cci(df['high'], df['low'], df['close'], window=20)
+        df['ATR'] = ta.volatility.average_true_range(df['high'], df['low'], df['close'], window=14)
+        df['ROC'] = ta.momentum.roc(df['close'], window=12)
+        df['WILLIAMS'] = ta.momentum.williams_r(df['high'], df['low'], df['close'], lbp=14)
+        df['MFI'] = ta.volume.money_flow_index(df['high'], df['low'], df['close'], df['volume'], window=14)
+        df['OBV'] = ta.volume.on_balance_volume(df['close'], df['volume'])
+        if market_open and len(df) > 1:
+            df['VWAP'] = (df['close'] * df['volume']).cumsum() / df['volume'].cumsum()
+        else:
+            df['VWAP'] = df['close']
+        psar_indicator = ta.trend.PSARIndicator(df['high'], df['low'], df['close'])
+        df['PSAR'] = psar_indicator.psar()
+
+        last = df.iloc[-1]
+        result = {k: (round(float(last[k]), 2) if pd.notnull(last[k]) else None) for k in [
+            'EMA7', 'EMA21', 'EMA50', 'EMA200', 'SMA20', 'SMA50', 'UpperBB', 'LowerBB',
+            'RSI', 'MACD', 'STOCH', 'ADX', 'CCI', 'ATR', 'ROC', 'WILLIAMS', 'MFI', 'OBV', 'VWAP', 'PSAR'
+        ]}
+        return result
     except Exception as e:
         print("Indicator error:", e)
         return {}
@@ -413,19 +422,11 @@ async def websocket_prices(websocket: WebSocket):
 def append_indicator_history(key, indicators):
     now_str = time.strftime("%Y-%m-%d %H:%M:%S")
     last = INDICATOR_HISTORY.get(key, [])[-1] if INDICATOR_HISTORY.get(key) else None
-    # Only append if indicators or time have changed
     if not last or last["time"] != now_str or any(
-        last.get(k) != indicators.get(k) for k in ["EMA7", "EMA21", "EMA50", "EMA200", "RSI", "MACD"]
+        last.get(k) != indicators.get(k) for k in indicators.keys()
     ):
-        INDICATOR_HISTORY.setdefault(key, []).append({
-            "time": now_str,
-            "EMA7": indicators.get("EMA7"),
-            "EMA21": indicators.get("EMA21"),
-            "EMA50": indicators.get("EMA50"),
-            "EMA200": indicators.get("EMA200"),
-            "RSI": indicators.get("RSI"),
-            "MACD": indicators.get("MACD"),
-        })
-        # Limit history to last 100 points
+        record = {"time": now_str}
+        record.update(indicators)
+        INDICATOR_HISTORY.setdefault(key, []).append(record)
         if len(INDICATOR_HISTORY[key]) > 100:
             INDICATOR_HISTORY[key] = INDICATOR_HISTORY[key][-100:]
