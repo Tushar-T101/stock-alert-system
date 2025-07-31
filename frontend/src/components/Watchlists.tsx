@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { INDICATORS } from '../indicators'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import EditIcon from '@mui/icons-material/Edit'
+import DeleteIcon from '@mui/icons-material/Delete'
 
 type Watchlist = {
   id: number
@@ -20,6 +23,7 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([INDICATORS[0].key, INDICATORS[1].key, INDICATORS[2].key])
   const [editModal, setEditModal] = useState<{ open: boolean, wl: Watchlist | null }>({ open: false, wl: null })
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -100,13 +104,16 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
   }
 
   function handleDelete(id: number) {
-    const updated = watchlists.filter(wl => wl.id !== id)
-    setWatchlists(updated)
-    localStorage.setItem('watchlists', JSON.stringify(updated))
-    // Optionally reset lastWatchlistId if all are deleted
-    if (updated.length === 0) {
-      localStorage.setItem('lastWatchlistId', '3')
-    }
+    setDeletingId(id)
+    setTimeout(() => {
+      const updated = watchlists.filter(wl => wl.id !== id)
+      setWatchlists(updated)
+      localStorage.setItem('watchlists', JSON.stringify(updated))
+      if (updated.length === 0) {
+        localStorage.setItem('lastWatchlistId', '3')
+      }
+      setDeletingId(null)
+    }, 400) // match animation duration
   }
 
   // Add this helper for tooltips (optional, simple)
@@ -138,17 +145,15 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
           onClick={() => setModalOpen(true)}
           aria-label="Add Watchlist"
         >
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="10" cy="10" r="9" stroke="currentColor" />
-            <path d="M10 6v8M6 10h8" stroke="currentColor" strokeLinecap="round" />
-          </svg>
+          <AddCircleOutlineIcon />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto space-y-3 p-2" style={{ maxHeight: 320 }}>
         {watchlists.map(wl => (
           <div
             key={wl.id}
-            className="bg-white rounded-xl shadow-md p-3 cursor-pointer hover:ring-2 ring-blue-500 transition-all duration-200 flex gap-3 items-start"
+            className={`bg-white rounded-xl shadow-md p-3 cursor-pointer hover:ring-2 ring-blue-500 transition-all duration-200 flex gap-3 items-start
+              ${deletingId === wl.id ? 'fadeout' : ''}`}
             onClick={() => onSelect(wl.id)}
           >
             <span className="text-2xl mt-1">{wl.icon || '📈'}</span>
@@ -168,20 +173,14 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
               onClick={e => { e.stopPropagation(); handleEdit(wl) }}
               title="Edit Watchlist"
             >
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 13.5V16h2.5l7.06-7.06-2.5-2.5L4 13.5z" />
-                <path d="M14.06 5.94a1.5 1.5 0 0 1 2.12 2.12l-1.06 1.06-2.5-2.5 1.06-1.06z" />
-              </svg>
+              <EditIcon />
             </button>
             <button
               className="ml-2 text-red-500 hover:text-red-700"
               onClick={e => { e.stopPropagation(); handleDelete(wl.id) }}
               title="Delete Watchlist"
             >
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 7h12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12z" />
-                <path d="M10 11v6m4-6v6" />
-              </svg>
+              <DeleteIcon />
             </button>
           </div>
         ))}

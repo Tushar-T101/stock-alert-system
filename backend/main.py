@@ -233,18 +233,29 @@ def check_ema_crossovers(watchlist_id, symbol, prev, curr, user_email):
         })
         if user_email:
             send_email_alert(user_email, f"EMA Alert for {symbol}", f"{alert}\n\nSymbol: {symbol}\nWatchlist: {watchlist_id}\nTime: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-def check_alerts(symbol, data, watchlist_id):
-    cond = USER_ALERTS.get(watchlist_id)
-    if not cond: return
+def check_alerts(symbol, indicators, watchlist_id):
+    user = USER_ALERTS.get(watchlist_id)
+    if not user or "conditions" not in user:
+        return
     triggered = []
-    if cond.get("priceAbove") and data["price"] > float(cond["priceAbove"]):
-        triggered.append(f"Price above ${cond['priceAbove']}")
-    if cond.get("rsiCross") and data.get("RSI") and data["RSI"] > float(cond["rsiCross"]):
-        triggered.append(f"RSI crossed {cond['rsiCross']}")
+    for cond in user["conditions"]:
+        ind = cond["indicator"]
+        cond_type = cond["type"]
+        value = cond["value"]
+        ind_val = indicators.get(ind)
+        if ind_val is None:
+            continue
+        # Example logic for common condition types:
+        if cond_type == "crosses_above" and ind_val > float(value):
+            triggered.append(f"{ind} crossed above {value}")
+        elif cond_type == "crosses_below" and ind_val < float(value):
+            triggered.append(f"{ind} crossed below {value}")
+        # Add more types as needed...
     for msg in triggered:
         ALERT_HISTORY.setdefault(symbol, []).append({"time": time.strftime("%Y-%m-%d %H:%M:%S"), "message": msg})
-        if cond.get("email"):
-            send_email_alert(cond["email"], f"Alert for {symbol}", msg)
+        email = user.get("email")
+        if email:
+            send_email_alert(email, f"Alert for {symbol}", msg)
 
 def is_market_open():
     from datetime import datetime
@@ -279,8 +290,8 @@ def refresh_prices():
                     for wid, symbols in WATCHLIST_STOCKS.items():
                         for watch_symbol in symbols:
                             if watch_symbol in batch_data:
-                                key = (wid, watch_symbol)
                                 indicators = batch_data[watch_symbol]
+                                check_alerts(watch_symbol, indicators, wid)
                                 INDICATOR_HISTORY.setdefault(key, []).append({
                                     "time": time.strftime("%Y-%m-%d %H:%M:%S"),
                                     "EMA7": indicators.get("EMA7"),
@@ -293,17 +304,17 @@ def refresh_prices():
                                 # Limit history to last 100 points
                                 if len(INDICATOR_HISTORY[key]) > 100:
                                     INDICATOR_HISTORY[key] = INDICATOR_HISTORY[key][-100:]
-                                # --- EMA crossover detection ---
-                                prev = PREV_EMAS.get(key)
-                                curr = {
-                                    "EMA7": indicators.get("EMA7"),
-                                    "EMA21": indicators.get("EMA21"),
-                                    "EMA50": indicators.get("EMA50"),
-                                    "EMA200": indicators.get("EMA200"),
-                                }
-                                user_email = USER_ALERTS.get(wid, {}).get("email")  # or fetch from user profile/settings
-                                check_ema_crossovers(wid, watch_symbol, prev, curr, user_email)
-                                PREV_EMAS[key] = curr
+                                # --- REMOVE THIS ---
+                                # prev = PREV_EMAS.get(key)
+                                # curr = {
+                                #     "EMA7": indicators.get("EMA7"),
+                                #     "EMA21": indicators.get("EMA21"),
+                                #     "EMA50": indicators.get("EMA50"),
+                                #     "EMA200": indicators.get("EMA200"),
+                                # }
+                                # user_email = USER_ALERTS.get(wid, {}).get("email")
+                                # check_ema_crossovers(wid, watch_symbol, prev, curr, user_email)
+                                # PREV_EMAS[key] = curr
                 else:
                     continue
             time.sleep(1)

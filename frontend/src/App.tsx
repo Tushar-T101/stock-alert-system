@@ -5,6 +5,7 @@ import LiveNiftyChart from './components/LiveNiftyChart'
 import WatchlistPage from './components/WatchlistPage'
 import Notification from './components/Notification'
 import './styles/notifications.css'
+import SettingsIcon from '@mui/icons-material/Settings'
 
 export function isMarketOpen() {
   const now = new Date()
@@ -90,28 +91,14 @@ function App() {
           ))}
         </div>
         {/* Topbar */}
-        <header className="flex items-center justify-between px-8 py-5 bg-white/90 shadow-sm backdrop-blur-md transition-all duration-300">
+        <header className="flex items-center justify-between p-5 bg-white/90 shadow-sm backdrop-blur-md transition-all duration-300">
           <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Dashboard</h1>
           <button
-            className="p-2 bg-gray-00 rounded-full hover:bg-gray-300 flex items-center justify-center transition-colors duration-200"
+            className="p-1 rounded-full hover:bg-gray-200 flex items-center justify-end transition-colors duration-200"
             onClick={() => setSettingsOpen(true)}
             aria-label="Settings"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-6 h-6 text-blue-600"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.01c1.527-.878 3.286.88 2.408 2.408a1.724 1.724 0 001.01 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.01 2.573c.878 1.527-.88 3.286-2.408 2.408a1.724 1.724 0 00-2.572 1.01c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.01c-1.527.878-3.286-.88-2.408-2.408a1.724 1.724 0 00-1.01-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.01-2.573c-.878-1.527.88-3.286 2.408-2.408.996.573 2.25.06 2.573-1.01z"
-              />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+            <SettingsIcon className="text-blue-600" fontSize="large" />
           </button>
         </header>
 

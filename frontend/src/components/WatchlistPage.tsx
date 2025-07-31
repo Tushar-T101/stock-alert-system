@@ -4,6 +4,8 @@ import AlertHistoryModal from './AlertHistoryModal'
 import { StockDataContext } from '../App'
 import IndicatorHistoryModal from './IndicatorHistoryModal'
 import { INDICATORS } from '../indicators'
+import DeleteIcon from '@mui/icons-material/Delete'
+import SettingsIcon from '@mui/icons-material/Settings'
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL
 
@@ -92,43 +94,51 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
     }
   }, [id])
 
-  // 1. Fetch initial indicator values for watchlist stocks ONCE
+  // 1. Initial fetch
   useEffect(() => {
     async function fetchIndicators() {
       const updatedStocks = await Promise.all(
-        stocks.map(async stock => {
+        stocks.map(async (stock) => {
           const res = await fetch(`${backendUrl}/api/stocks?type=Stocks&search=${stock.symbol}`)
           const data = await res.json()
           const found = data.find((s: any) => s.symbol === stock.symbol)
-          return found
-            ? { ...stock, EMA7: found.EMA7, RSI: found.RSI, MACD: found.MACD }
-            : stock
+          if (!found) return stock
+          // Add all indicators from watchlist
+          const indicatorsObj: Record<string, any> = {};
+          (watchlist?.indicators || []).forEach(indKey => {
+            indicatorsObj[indKey] = found[indKey]
+          })
+          return { ...stock, ...indicatorsObj }
         })
       )
       setStocks(updatedStocks)
     }
     fetchIndicators()
     // eslint-disable-next-line
-  }, []) // Only on mount
+  }, [watchlist]) // re-fetch if indicators change
 
-  // 2. WebSocket for live updates for watchlist stocks
+  // 2. WebSocket update
   useEffect(() => {
     wsRef.current = new WebSocket(`${backendUrl.replace(/^http/, 'ws')}/ws/prices`)
     wsRef.current.onmessage = (event) => {
       const data = JSON.parse(event.data)
       setStocks(prev =>
-        prev.map(stock =>
-          data[stock.symbol]
-            ? { ...stock, EMA7: data[stock.symbol].EMA7, RSI: data[stock.symbol].RSI, MACD: data[stock.symbol].MACD }
+        prev.map(stock => {
+          const update = {};
+          (watchlist?.indicators || []).forEach(indKey => {
+            update[indKey] = data[stock.symbol]?.[indKey]
+          })
+          return data[stock.symbol]
+            ? { ...stock, ...update }
             : stock
-        )
+        })
       )
     }
     return () => {
       wsRef.current?.close()
     }
     // eslint-disable-next-line
-  }, [])
+  }, [watchlist])
 
   // 3. Add Modal: HTTP fetch for initial options, then WebSocket for live updates
   useEffect(() => {
@@ -277,23 +287,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
           }}
           title="Watchlist Settings"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-blue-600"
-            width="24"
-            height="24"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.01c1.527-.878 3.286.88 2.408 2.408a1.724 1.724 0 001.01 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.01 2.573c.878 1.527-.88 3.286-2.408 2.408a1.724 1.724 0 00-2.572 1.01c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.01c-1.527.878-3.286-.88-2.408-2.408a1.724 1.724 0 00-1.01-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.01-2.573c-.878-1.527.88-3.286 2.408-2.408.996.573 2.25.06 2.573-1.01z"
-            />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
+          <SettingsIcon />
         </button>
       </div>
       <div className="flex gap-4 mb-6">
@@ -330,25 +324,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
                 onClick={e => { e.stopPropagation(); handleRemove(idx); }}
                 title="Remove"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 7h12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M10 11v6m4-6v6"
-                  />
-                </svg>
+                <DeleteIcon />
               </button>
             </div>
             {/* Removed indicator checkboxes */}
