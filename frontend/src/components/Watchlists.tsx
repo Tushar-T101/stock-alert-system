@@ -23,21 +23,31 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
 
   // Load from localStorage on mount
   useEffect(() => {
+    console.log('Localstorage on mount:', localStorage.getItem('watchlists'))
     const saved = localStorage.getItem('watchlists')
-    if (!saved || (Array.isArray(JSON.parse(saved)) && JSON.parse(saved).length === 0)) {
-      setWatchlists([
-        { id: 1, name: 'Tech Stocks', description: 'Top tech companies', icon: '📈', stocks: ['AAPL', 'MSFT'], indicators: [INDICATORS[0].key, INDICATORS[1].key, INDICATORS[2].key] },
-        { id: 2, name: 'Banking Picks', description: 'Major banks', icon: '💼', stocks: ['JPM', 'BAC'], indicators: [INDICATORS[0].key, INDICATORS[1].key, INDICATORS[2].key] },
-        { id: 3, name: 'Momentum', description: 'High momentum stocks', icon: '🚀', stocks: ['TSLA'], indicators: [INDICATORS[0].key, INDICATORS[1].key, INDICATORS[2].key] },
-      ])
-    } else {
-      setWatchlists(JSON.parse(saved))
+    if (saved) {
+      try {
+        const arr = JSON.parse(saved)
+        // If it's an array and NOT empty, use it
+        if (Array.isArray(arr) && arr.length > 0) {
+          setWatchlists(arr)
+          return
+        }
+      } catch {}
     }
+    // If nothing in localStorage or it's empty, set defaults
+    setWatchlists([
+      { id: 1, name: 'Tech Stocks', description: 'Top tech companies', icon: '📈', stocks: ['AAPL', 'MSFT'], indicators: [INDICATORS[0].key, INDICATORS[1].key, INDICATORS[2].key] },
+      { id: 2, name: 'Banking Picks', description: 'Major banks', icon: '💼', stocks: ['JPM', 'BAC'], indicators: [INDICATORS[0].key, INDICATORS[1].key, INDICATORS[2].key] },
+      { id: 3, name: 'Momentum', description: 'High momentum stocks', icon: '🚀', stocks: ['TSLA'], indicators: [INDICATORS[0].key, INDICATORS[1].key, INDICATORS[2].key] },
+    ])
   }, [])
 
   // Save to localStorage on change
   useEffect(() => {
-    localStorage.setItem('watchlists', JSON.stringify(watchlists))
+    if (watchlists.length > 0) {
+      localStorage.setItem('watchlists', JSON.stringify(watchlists))
+    }
   }, [watchlists])
 
   const handleAdd = () => {
@@ -45,17 +55,20 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
       !newName.trim() ||
       watchlists.some(wl => wl.name.toLowerCase() === newName.trim().toLowerCase())
     ) return
-    setWatchlists([
+    const newId = getNextWatchlistId()
+    const newWatchlists = [
       ...watchlists,
       {
-        id: Date.now(),
+        id: newId,
         name: newName,
         description: newDesc,
         icon: newIcon,
         stocks: [],
         indicators: selectedIndicators,
       },
-    ])
+    ]
+    setWatchlists(newWatchlists)
+    localStorage.setItem('watchlists', JSON.stringify(newWatchlists))
     setNewName('')
     setNewDesc('')
     setNewIcon(ICONS[0])
@@ -86,6 +99,16 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
     setSelectedIndicators([INDICATORS[0].key, INDICATORS[1].key, INDICATORS[2].key])
   }
 
+  function handleDelete(id: number) {
+    const updated = watchlists.filter(wl => wl.id !== id)
+    setWatchlists(updated)
+    localStorage.setItem('watchlists', JSON.stringify(updated))
+    // Optionally reset lastWatchlistId if all are deleted
+    if (updated.length === 0) {
+      localStorage.setItem('lastWatchlistId', '3')
+    }
+  }
+
   // Add this helper for tooltips (optional, simple)
   function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
     return (
@@ -96,6 +119,14 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
         </span>
       </span>
     )
+  }
+
+  function getNextWatchlistId() {
+    // Try to get last ID from localStorage
+    const lastId = Number(localStorage.getItem('lastWatchlistId') || '3')
+    const nextId = lastId + 1
+    localStorage.setItem('lastWatchlistId', String(nextId))
+    return nextId
   }
 
   return (
@@ -140,6 +171,16 @@ export default function Watchlists({ onSelect }: { onSelect: (id: number) => voi
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 13.5V16h2.5l7.06-7.06-2.5-2.5L4 13.5z" />
                 <path d="M14.06 5.94a1.5 1.5 0 0 1 2.12 2.12l-1.06 1.06-2.5-2.5 1.06-1.06z" />
+              </svg>
+            </button>
+            <button
+              className="ml-2 text-red-500 hover:text-red-700"
+              onClick={e => { e.stopPropagation(); handleDelete(wl.id) }}
+              title="Delete Watchlist"
+            >
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 7h12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12z" />
+                <path d="M10 11v6m4-6v6" />
               </svg>
             </button>
           </div>

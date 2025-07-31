@@ -144,9 +144,12 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
       wsRef.current = new WebSocket(`${backendUrl.replace(/^http/, 'ws')}/ws/prices`)
       wsRef.current.onmessage = (event) => {
         const data = JSON.parse(event.data)
-        setStockOptions(prev =>
-          prev.map(opt => data[opt.symbol] ? { ...opt, ...data[opt.symbol] } : opt)
-        )
+        setStockOptions(prev => ({
+          ...prev,
+          [activeTab]: Array.isArray(prev[activeTab])
+            ? prev[activeTab].map(opt => data[opt.symbol] ? { ...opt, ...data[opt.symbol] } : opt)
+            : []
+        }))
       }
       return () => {
         wsRef.current?.close()
@@ -237,6 +240,23 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
     setHistoryModal({ open: true, symbol })
   }
 
+  const handleClearAlerts = async () => {
+    // Clear alerts for all stocks in this watchlist
+    await Promise.all(
+      stocks.map(stock =>
+        fetch(`${backendUrl}/api/clear_alerts?symbol=${stock.symbol}`, { method: 'POST' })
+      )
+    )
+    // Refresh alert statuses
+    const statuses: { [symbol: string]: string } = {}
+    for (const stock of stocks) {
+      const res = await fetch(`${backendUrl}/api/alert_history?symbol=${stock.symbol}`)
+      const history = await res.json()
+      statuses[stock.symbol] = history.length > 0 ? history[history.length - 1].message : 'No alerts'
+    }
+    setAlertStatuses(statuses)
+  }
+
   return (
     <div className="p-6">
       <button className="mb-4 text-blue-600 underline" onClick={onBack}>
@@ -289,6 +309,12 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
         >
           Set Alert Conditions
         </button>
+        <button
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+          onClick={handleClearAlerts}
+        >
+          Clear Alerts
+        </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {stocks.map((stock, idx) => (
@@ -327,15 +353,23 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
             </div>
             {/* Removed indicator checkboxes */}
             <div className="flex gap-2 mt-2">
-              <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
-                EMA7: {stock.EMA7 ?? '--'}
-              </span>
-              <span className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs">
-                RSI: {stock.RSI ?? '--'}
-              </span>
-              <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs">
-                MACD: {stock.MACD ?? '--'}
-              </span>
+              {watchlist?.indicators?.map(indKey => {
+                const indMeta = INDICATORS.find(i => i.key === indKey)
+                let value = stock[indKey]
+                if (typeof value === 'number') value = value.toFixed(2)
+                if (value === undefined || value === null || typeof value === 'object') value = '--'
+                // Color logic (optional)
+                let color = 'bg-gray-100 text-gray-700'
+                if (indKey.startsWith('EMA')) color = 'bg-blue-50 text-blue-700'
+                if (indKey === 'RSI') color = 'bg-green-50 text-green-700'
+                if (indKey === 'MACD') color = 'bg-purple-50 text-purple-700'
+                // Add more colors for other indicators if desired
+                return (
+                  <span key={indKey} className={`${color} px-2 py-1 rounded text-xs`}>
+                    {indMeta?.label}: {value}
+                  </span>
+                )
+              })}
             </div>
             <div className="text-sm text-yellow-600 min-h-[1.5em]">
               {alertStatuses[stock.symbol] || '[Alert status here]'}
@@ -349,6 +383,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
         onClose={() => setAlertModal(false)}
         onSave={handleSaveAlert}
         initial={alertConditions}
+        indicators={watchlist?.indicators || []}
       />
       <AlertHistoryModal
         open={!!historyModal?.open}

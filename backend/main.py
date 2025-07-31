@@ -119,6 +119,8 @@ def fetch_crypto(symbol):
 # In-memory cache
 PRICE_CACHE = {}
 ALERT_HISTORY = {}  # {symbol: [ {time, message} ]}
+# Clear alert history on backend restart
+ALERT_HISTORY.clear()
 USER_ALERTS = {}    # {watchlist_id: {priceAbove, rsiCross, email}}
 WATCHLIST_STOCKS = {}  # {watchlist_id: [symbol, ...]}
 INDICATOR_HISTORY = {}  # {(watchlist_id, symbol): [ {time, EMA, RSI, MACD} ]}
@@ -211,24 +213,24 @@ def send_email_alert(to_email, subject, message, name="Stock Alert System", time
 def check_ema_crossovers(watchlist_id, symbol, prev, curr, user_email):
     alerts = []
     # Short-term breakout
-    if prev and prev["EMA7"] < prev["EMA21"] and prev["EMA7"] < prev["EMA50"] and curr["EMA7"] >= curr["EMA21"] and curr["EMA7"] >= curr["EMA50"]:
+    if prev and prev["EMA7"] < prev["EMA21"] and prev["EMA7"] < prev["EMA50"] \
+       and curr["EMA7"] >= curr["EMA21"] and curr["EMA7"] >= curr["EMA50"]:
         alerts.append("Short-term breakout: 7-day EMA crossed above 21-day and 50-day EMA.")
-    # Long-term breakout
+    # Long-term breakout (fix: only trigger when crossing)
     if prev and prev["EMA7"] < prev["EMA200"] and curr["EMA7"] >= curr["EMA200"]:
         alerts.append("Long-term breakout: 7-day EMA crossed above 200-day EMA.")
     # Short-term breakdown
-    if prev and prev["EMA7"] > prev["EMA21"] and prev["EMA7"] > prev["EMA50"] and curr["EMA7"] <= curr["EMA21"] and curr["EMA7"] <= curr["EMA50"]:
+    if prev and prev["EMA7"] > prev["EMA21"] and prev["EMA7"] > prev["EMA50"] \
+       and curr["EMA7"] <= curr["EMA21"] and curr["EMA7"] <= curr["EMA50"]:
         alerts.append("Short-term breakdown: 7-day EMA crossed below 21-day and 50-day EMA.")
-    # Long-term breakdown
+    # Long-term breakdown (fix: only trigger when crossing)
     if prev and prev["EMA7"] > prev["EMA200"] and curr["EMA7"] <= curr["EMA200"]:
         alerts.append("Long-term breakdown: 7-day EMA crossed below 200-day EMA.")
     for alert in alerts:
-        # Record alert
         ALERT_HISTORY.setdefault(symbol, []).append({
             "time": time.strftime("%Y-%m-%d %H:%M:%S"),
             "message": alert
         })
-        # Send email
         if user_email:
             send_email_alert(user_email, f"EMA Alert for {symbol}", f"{alert}\n\nSymbol: {symbol}\nWatchlist: {watchlist_id}\nTime: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 def check_alerts(symbol, data, watchlist_id):
@@ -430,3 +432,8 @@ def append_indicator_history(key, indicators):
         INDICATOR_HISTORY.setdefault(key, []).append(record)
         if len(INDICATOR_HISTORY[key]) > 100:
             INDICATOR_HISTORY[key] = INDICATOR_HISTORY[key][-100:]
+            
+@app.post("/api/clear_alerts")
+def clear_alerts(symbol: str):
+    ALERT_HISTORY[symbol] = []
+    return {"ok": True}
