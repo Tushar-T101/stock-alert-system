@@ -77,7 +77,7 @@ export default function IndicatorHistoryModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 animate-fadein">
-      <div className="bg-white rounded-xl shadow-2xl p-8 min-w-[350px] max-w-[95vw] transition-all duration-300 w-[700px]">
+      <div className="bg-white rounded-xl shadow-2xl p-8 min-w-[350px] max-w-[95vw] transition-all duration-300 w-[900px]">
         <h3 className="text-lg font-bold mb-4">
           {symbol} History
         </h3>

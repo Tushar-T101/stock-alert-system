@@ -49,6 +49,29 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
   )
 }
 
+const INDICATOR_COLORS: Record<string, string> = {
+  EMA7: 'bg-blue-50 text-blue-700',
+  EMA21: 'bg-green-50 text-green-700',
+  EMA50: 'bg-purple-50 text-purple-700',
+  EMA200: 'bg-orange-50 text-orange-700',
+  SMA20: 'bg-indigo-50 text-indigo-700',
+  SMA50: 'bg-pink-50 text-pink-700',
+  UpperBB: 'bg-yellow-50 text-yellow-700',
+  LowerBB: 'bg-yellow-100 text-yellow-800',
+  RSI: 'bg-teal-50 text-teal-700',
+  MACD: 'bg-red-50 text-red-700',
+  STOCH: 'bg-fuchsia-50 text-fuchsia-700',
+  ADX: 'bg-cyan-50 text-cyan-700',
+  CCI: 'bg-lime-50 text-lime-700',
+  ATR: 'bg-amber-50 text-amber-700',
+  ROC: 'bg-gray-100 text-gray-700',
+  WILLIAMS: 'bg-emerald-50 text-emerald-700',
+  MFI: 'bg-slate-50 text-slate-700',
+  OBV: 'bg-violet-50 text-violet-700',
+  VWAP: 'bg-blue-100 text-blue-900',
+  PSAR: 'bg-orange-100 text-orange-900',
+}
+
 export default function WatchlistPage({ id, onBack }: { id: number; onBack: () => void }) {
   const [stocks, setStocks] = useState<Stock[]>([
     { symbol: 'AAPL', indicators: { EMA: true, RSI: true, MACD: true } },
@@ -273,7 +296,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
         ← Back to Dashboard
       </button>
       <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-2xl font-bold">Watchlist #{id}</h2>
+        <h2 className="text-2xl font-bold">{watchlist?.name || `Watchlist #${id}`}</h2>
         <button
           className="flex items-center gap-1 px-3 py-1 rounded-full text-gray-700 text-sm font-medium transition"
           onClick={() => {
@@ -327,21 +350,16 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
                 <DeleteIcon />
               </button>
             </div>
-            {/* Removed indicator checkboxes */}
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2 mt-2 overflow-x-auto flex-nowrap pb-1">
               {watchlist?.indicators?.map(indKey => {
                 const indMeta = INDICATORS.find(i => i.key === indKey)
                 let value = stock[indKey]
                 if (typeof value === 'number') value = value.toFixed(2)
                 if (value === undefined || value === null || typeof value === 'object') value = '--'
-                // Color logic (optional)
-                let color = 'bg-gray-100 text-gray-700'
-                if (indKey.startsWith('EMA')) color = 'bg-blue-50 text-blue-700'
-                if (indKey === 'RSI') color = 'bg-green-50 text-green-700'
-                if (indKey === 'MACD') color = 'bg-purple-50 text-purple-700'
-                // Add more colors for other indicators if desired
+                // Use color map, fallback to gray
+                const color = INDICATOR_COLORS[indKey] || 'bg-gray-100 text-gray-700'
                 return (
-                  <span key={indKey} className={`${color} px-2 py-1 rounded text-xs`}>
+                  <span key={indKey} className={`${color} px-2 py-1 rounded text-xs whitespace-nowrap`}>
                     {indMeta?.label}: {value}
                   </span>
                 )
