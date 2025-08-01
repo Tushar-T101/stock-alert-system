@@ -13,6 +13,11 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 import pandas as pd
 import ta
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 app = FastAPI()
 
@@ -185,8 +190,6 @@ def compute_indicators(symbol):
     except Exception as e:
         print("Indicator error:", e)
         return {}
-
-SENDGRID_API_KEY = "***REMOVED***"
 
 def send_email_alert(to_email, subject, message, name="Stock Alert System", time_str=None):
     if not time_str:
