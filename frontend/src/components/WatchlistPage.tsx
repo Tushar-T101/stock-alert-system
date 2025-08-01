@@ -50,26 +50,26 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
 }
 
 const INDICATOR_COLORS: Record<string, string> = {
-  EMA7: 'bg-blue-50 text-blue-700',
-  EMA21: 'bg-green-50 text-green-700',
-  EMA50: 'bg-purple-50 text-purple-700',
-  EMA200: 'bg-orange-50 text-orange-700',
-  SMA20: 'bg-indigo-50 text-indigo-700',
-  SMA50: 'bg-pink-50 text-pink-700',
-  UpperBB: 'bg-yellow-50 text-yellow-700',
-  LowerBB: 'bg-yellow-100 text-yellow-800',
-  RSI: 'bg-teal-50 text-teal-700',
-  MACD: 'bg-red-50 text-red-700',
-  STOCH: 'bg-fuchsia-50 text-fuchsia-700',
-  ADX: 'bg-cyan-50 text-cyan-700',
-  CCI: 'bg-lime-50 text-lime-700',
-  ATR: 'bg-amber-50 text-amber-700',
-  ROC: 'bg-gray-100 text-gray-700',
-  WILLIAMS: 'bg-emerald-50 text-emerald-700',
-  MFI: 'bg-slate-50 text-slate-700',
-  OBV: 'bg-violet-50 text-violet-700',
-  VWAP: 'bg-blue-100 text-blue-900',
-  PSAR: 'bg-orange-100 text-orange-900',
+  EMA7: 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200',
+  EMA21: 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-200',
+  EMA50: 'bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-200',
+  EMA200: 'bg-orange-50 text-orange-700 dark:bg-orange-900 dark:text-orange-200',
+  SMA20: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200',
+  SMA50: 'bg-pink-50 text-pink-700 dark:bg-pink-900 dark:text-pink-200',
+  UpperBB: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200',
+  LowerBB: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-100',
+  RSI: 'bg-teal-50 text-teal-700 dark:bg-teal-900 dark:text-teal-200',
+  MACD: 'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-200',
+  STOCH: 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-900 dark:text-fuchsia-200',
+  ADX: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-200',
+  CCI: 'bg-lime-50 text-lime-700 dark:bg-lime-900 dark:text-lime-200',
+  ATR: 'bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-200',
+  ROC: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
+  WILLIAMS: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200',
+  MFI: 'bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-200',
+  OBV: 'bg-violet-50 text-violet-700 dark:bg-violet-900 dark:text-violet-200',
+  VWAP: 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200',
+  PSAR: 'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200',
 }
 
 export default function WatchlistPage({ id, onBack }: { id: number; onBack: () => void }) {
@@ -291,14 +291,14 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
   }
 
   return (
-    <div className="p-6">
-      <button className="mb-4 text-blue-600 underline" onClick={onBack}>
+    <div className="p-6 bg-gray-50 dark:bg-neutral-950 min-h-screen transition-colors duration-300">
+      <button className="mb-4 text-blue-600 dark:text-blue-400 underline" onClick={onBack}>
         ← Back to Dashboard
       </button>
       <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-2xl font-bold">{watchlist?.name || `Watchlist #${id}`}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{watchlist?.name || `Watchlist #${id}`}</h2>
         <button
-          className="flex items-center gap-1 px-3 py-1 rounded-full text-gray-700 text-sm font-medium transition"
+          className="flex items-center gap-1 px-3 py-1 rounded-full text-gray-700 dark:text-neutral-200 text-sm font-medium transition bg-gray-100 dark:bg-neutral-900 hover:bg-gray-200 dark:hover:bg-neutral-800"
           onClick={() => {
             if (watchlist) {
               setEditModal(true)
@@ -315,19 +315,19 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
       </div>
       <div className="flex gap-4 mb-6">
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition"
           onClick={() => setAddModal(true)}
         >
           + Add Stock
         </button>
         <button
-          className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+          className="px-4 py-2 bg-yellow-500 dark:bg-yellow-600 text-white rounded-lg hover:bg-yellow-600 dark:hover:bg-yellow-700 transition"
           onClick={() => setAlertModal(true)}
         >
           Set Alert Conditions
         </button>
         <button
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+          className="px-4 py-2 bg-gray-200 dark:bg-neutral-900 text-gray-700 dark:text-neutral-200 rounded-lg hover:bg-gray-300 dark:hover:bg-neutral-800 transition"
           onClick={handleClearAlerts}
         >
           Clear Alerts
@@ -337,13 +337,13 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
         {stocks.map((stock, idx) => (
           <div
             key={stock.symbol}
-            className="bg-white rounded-xl shadow-md p-6 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg animate-fadein cursor-pointer"
+            className="bg-white dark:bg-neutral-900 rounded-xl shadow-md p-6 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg animate-fadein cursor-pointer"
             onClick={() => setIndicatorModal({ open: true, symbol: stock.symbol })}
           >
             <div className="flex justify-between items-center">
-              <span className="font-semibold text-lg">{stock.symbol}</span>
+              <span className="font-semibold text-lg text-gray-900 dark:text-neutral-100">{stock.symbol}</span>
               <button
-                className="text-red-500 hover:text-red-700 transition"
+                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
                 onClick={e => { e.stopPropagation(); handleRemove(idx); }}
                 title="Remove"
               >
@@ -365,7 +365,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
                 )
               })}
             </div>
-            <div className="text-sm text-yellow-600 min-h-[1.5em]">
+            <div className="text-sm text-yellow-600 dark:text-yellow-400 min-h-[1.5em]">
               {alertStatuses[stock.symbol] || '[Alert status here]'}
             </div>
           </div>
@@ -385,28 +385,32 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
         history={alertHistory}
       />
       {addModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 animate-fadein">
-          <div className="bg-white rounded-xl shadow-2xl p-0 min-w-[500px] max-w-[95vw] transition-all duration-300">
+        <div className="fixed inset-0 bg-black bg-opacity-30 dark:bg-opacity-80 flex items-center justify-center z-50 animate-fadein">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl p-0 min-w-[500px] max-w-[95vw] transition-all duration-300">
             {/* Search Bar */}
-            <div className="p-4 border-b flex items-center gap-2">
+            <div className="p-4 border-b border-gray-200 dark:border-neutral-800 flex items-center gap-2 bg-gray-50 dark:bg-neutral-900">
               <input
                 type="text"
-                className="border rounded px-3 py-2 w-full"
+                className="border rounded px-3 py-2 w-full bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100 border-gray-300 dark:border-neutral-800"
                 placeholder={`Search ${activeTab.toLowerCase()}, eg. AAPL`}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 autoFocus
               />
-              <button className="ml-2 text-gray-400 hover:text-gray-600" onClick={() => setAddModal(false)}>
+              <button className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200" onClick={() => setAddModal(false)}>
                 <svg width="24" height="24" fill="none" stroke="currentColor"><path d="M6 6l12 12M6 18L18 6" strokeWidth="2"/></svg>
               </button>
             </div>
             {/* Tabs */}
-            <div className="px-4 py-2 border-b flex gap-2">
+            <div className="px-4 py-2 border-b border-gray-200 dark:border-neutral-800 flex gap-2 bg-gray-50 dark:bg-neutral-900">
               {TABS.map(tab => (
                 <button
                   key={tab}
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-700'} transition`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    activeTab === tab
+                      ? 'bg-neutral-900 text-white dark:bg-neutral-800 dark:text-neutral-100'
+                      : 'bg-gray-200 text-gray-700 dark:bg-neutral-900 dark:text-neutral-300'
+                  } transition`}
                   onClick={() => setActiveTab(tab)}
                 >
                   {tab}
@@ -417,19 +421,19 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
             {(() => {
               const watchlistSymbols = stocks.map(s => s.symbol);
               return (
-                <div className="max-h-[400px] overflow-y-auto bg-gray-50">
+                <div className="max-h-[400px] overflow-y-auto bg-gray-50 dark:bg-neutral-950">
                   {loading && (
-                    <div className="p-4 text-gray-400 text-center">Loading...</div>
+                    <div className="p-4 text-gray-400 dark:text-neutral-500 text-center">Loading...</div>
                   )}
                   {!loading && optionsForTab.length === 0 && (
-                    <div className="p-4 text-gray-400 text-center">No results</div>
+                    <div className="p-4 text-gray-400 dark:text-neutral-500 text-center">No results</div>
                   )}
                   {!loading && optionsForTab
                     .filter(s => !watchlistSymbols.includes(s.symbol))
                     .map(s => (
                       <div
                         key={s.symbol}
-                        className={`flex items-center justify-between px-4 py-3 border-b cursor-pointer hover:bg-blue-50 transition ${selectedStocks.includes(s.symbol) ? 'bg-blue-100' : ''}`}
+                        className={`flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-neutral-900 transition ${selectedStocks.includes(s.symbol) ? 'bg-blue-100 dark:bg-neutral-900' : ''}`}
                         onClick={() => {
                           setSelectedStocks(sel =>
                             sel.includes(s.symbol)
@@ -449,15 +453,15 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
                                 : [...sel, s.symbol]
                             );
                           }}
-                          className="mr-2"
+                          className="mr-2 accent-blue-600 dark:accent-blue-400"
                         />
                         <div>
-                          <span className="font-semibold">{s.symbol}</span>
-                          <span className="ml-2 text-gray-600">{s.name}</span>
+                          <span className="font-semibold text-gray-900 dark:text-neutral-100">{s.symbol}</span>
+                          <span className="ml-2 text-gray-600 dark:text-neutral-400">{s.name}</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-mono">${s.price?.toFixed(2) ?? '--'}</span>
-                          <span className={`ml-2 ${s.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className="font-mono text-gray-900 dark:text-neutral-100">${s.price?.toFixed(2) ?? '--'}</span>
+                          <span className={`ml-2 ${s.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {s.change >= 0 ? '+' : ''}{s.change?.toFixed(2) ?? '--'}
                           </span>
                         </div>
@@ -468,51 +472,51 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
               );
             })()}
             {/* Add Button */}
-            <div className="flex gap-2 p-4">
+            <div className="flex gap-2 p-4 bg-gray-50 dark:bg-neutral-900">
               <button
-                className={`px-4 py-2 bg-blue-600 text-white rounded ${selectedStocks.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded ${selectedStocks.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleAddStocks}
                 disabled={selectedStocks.length === 0}
               >
                 Add
               </button>
-              <button className="px-4 py-2 bg-gray-200 rounded" onClick={() => setAddModal(false)}>Cancel</button>
+              <button className="px-4 py-2 bg-gray-200 dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 rounded" onClick={() => setAddModal(false)}>Cancel</button>
             </div>
           </div>
         </div>
       )}
       {/* --- Settings Modal --- */}
       {editModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 animate-fadein">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 min-w-[350px] max-w-[95vw] w-full sm:w-[440px] transition-all duration-300">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+        <div className="fixed inset-0 bg-black bg-opacity-30 dark:bg-opacity-80 flex items-center justify-center z-50 animate-fadein">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl p-8 min-w-[350px] max-w-[95vw] w-full sm:w-[440px] transition-all duration-300">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-neutral-100">
               <span role="img" aria-label="Edit">✏️</span> Edit Watchlist
             </h3>
-            <label className="block font-semibold mb-2 text-gray-700">Name</label>
+            <label className="block font-semibold mb-2 text-gray-700 dark:text-neutral-200">Name</label>
             <input
               type="text"
-              className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+              className="border border-gray-300 dark:border-neutral-800 rounded-lg px-3 py-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 transition bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100"
               placeholder="Watchlist name"
               value={newName}
               onChange={e => setNewName(e.target.value)}
               autoFocus
             />
-            <label className="block font-semibold mb-2 text-gray-700">Description <span className="text-xs text-gray-400">(optional)</span></label>
+            <label className="block font-semibold mb-2 text-gray-700 dark:text-neutral-200">Description <span className="text-xs text-gray-400 dark:text-neutral-400">(optional)</span></label>
             <textarea
-              className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-200 transition resize-none"
+              className="border border-gray-300 dark:border-neutral-800 rounded-lg px-3 py-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 transition resize-none bg-white dark:bg-neutral-950 text-gray-900 dark:text-neutral-100"
               placeholder="Describe this watchlist (optional)"
               rows={2}
               value={newDesc}
               onChange={e => setNewDesc(e.target.value)}
             />
-            <label className="block font-semibold mb-2 text-gray-700">Icon</label>
+            <label className="block font-semibold mb-2 text-gray-700 dark:text-neutral-200">Icon</label>
             <div className="flex gap-2 mb-4" title="Choose an icon">
               {ICONS.map(icon => (
                 <Tooltip key={icon} text="Choose an icon">
                   <button
                     type="button"
                     className={`text-2xl rounded-full p-1 border-2 transition
-                      ${icon === newIcon ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:border-blue-300'}`}
+                      ${icon === newIcon ? 'border-blue-500 bg-blue-50 dark:bg-neutral-900' : 'border-transparent hover:border-blue-300 dark:hover:border-neutral-700'}`}
                     onClick={() => setNewIcon(icon)}
                     aria-label={`Choose icon ${icon}`}
                   >
@@ -521,21 +525,21 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
                 </Tooltip>
               ))}
             </div>
-            <label className="block font-semibold mb-2 text-gray-700">
+            <label className="block font-semibold mb-2 text-gray-700 dark:text-neutral-200">
               Indicators
-              <span className="text-xs text-gray-400 ml-2">(applies to all stocks)</span>
+              <span className="text-xs text-gray-400 dark:text-neutral-400 ml-2">(applies to all stocks)</span>
             </label>
             <div className="flex gap-2 mb-2">
               <button
                 type="button"
-                className="text-xs px-2 py-1 bg-blue-100 rounded hover:bg-blue-200"
+                className="text-xs px-2 py-1 bg-blue-100 dark:bg-neutral-900 rounded hover:bg-blue-200 dark:hover:bg-neutral-800 text-blue-700 dark:text-blue-200"
                 onClick={() => setSelectedIndicators(INDICATORS.map(i => i.key))}
               >
                 Select All
               </button>
               <button
                 type="button"
-                className="text-xs px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
+                className="text-xs px-2 py-1 bg-gray-100 dark:bg-neutral-900 rounded hover:bg-gray-200 dark:hover:bg-neutral-800 text-gray-700 dark:text-neutral-200"
                 onClick={() => setSelectedIndicators([])}
               >
                 Clear All
@@ -546,7 +550,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
                 <Tooltip key={ind.key} text={ind.label}>
                   <label
                     className={`flex items-center gap-1 text-sm px-2 py-1 rounded cursor-pointer transition
-                      ${selectedIndicators.includes(ind.key) ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
+                      ${selectedIndicators.includes(ind.key) ? 'bg-blue-50 dark:bg-neutral-900' : 'hover:bg-gray-100 dark:hover:bg-neutral-800'}`}
                     title={ind.label}
                   >
                     <input
@@ -559,7 +563,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
                             : [...sel, ind.key]
                         )
                       }
-                      className="accent-blue-600"
+                      className="accent-blue-600 dark:accent-blue-400"
                     />
                     {ind.label}
                   </label>
@@ -567,11 +571,11 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
               ))}
             </div>
             {selectedIndicators.length === 0 && (
-              <div className="text-xs text-red-600 mb-2">Select at least one indicator.</div>
+              <div className="text-xs text-red-600 dark:text-red-400 mb-2">Select at least one indicator.</div>
             )}
             <div className="flex gap-2 mt-6">
               <button
-                className={`px-4 py-2 bg-blue-600 text-white rounded font-semibold transition ${
+                className={`px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded font-semibold transition ${
                   !newName.trim() || selectedIndicators.length === 0
                     ? 'opacity-50 cursor-not-allowed'
                     : ''
@@ -601,7 +605,7 @@ export default function WatchlistPage({ id, onBack }: { id: number; onBack: () =
                 Save
               </button>
               <button
-                className="px-4 py-2 bg-gray-200 rounded font-semibold"
+                className="px-4 py-2 bg-gray-200 dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 rounded font-semibold"
                 onClick={() => setEditModal(false)}
               >
                 Cancel

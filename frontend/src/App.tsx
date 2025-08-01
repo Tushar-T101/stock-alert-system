@@ -10,15 +10,14 @@ import SettingsIcon from '@mui/icons-material/Settings'
 export function isMarketOpen() {
   const now = new Date()
   const ny = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
-  const day = ny.getDay() // 0 = Sunday, 6 = Saturday
-  if (day === 0 || day === 6) return false // Closed on weekends
+  const day = ny.getDay()
+  if (day === 0 || day === 6) return false
   const hours = ny.getHours()
   const minutes = ny.getMinutes()
   const mins = hours * 60 + minutes
-  return mins >= 570 && mins < 960 // 9:30am to 4:00pm
+  return mins >= 570 && mins < 960
 }
 
-// Create a context for stock data
 export const StockDataContext = createContext<{
   stockOptions: Record<string, any[]>
   setStockOptions: React.Dispatch<React.SetStateAction<Record<string, any[]>>>
@@ -35,12 +34,10 @@ function App() {
   const [stockOptions, setStockOptions] = useState<Record<string, any[]>>({})
 
   useEffect(() => {
-    // Check every minute
     const interval = setInterval(() => setMarketOpen(isMarketOpen()), 60000)
     return () => clearInterval(interval)
   }, [])
 
-  // Show market closed notification if not already present
   useEffect(() => {
     if (!marketOpen) {
       setNotifications((prev) =>
@@ -65,9 +62,7 @@ function App() {
     }
   }, [marketOpen])
 
-  // Fetch all stocks on app load
   useEffect(() => {
-    // Preload all asset types
     const types = ['Stocks', 'Funds', 'Futures', 'Forex', 'Crypto', 'Indices', 'Bonds', 'Economy', 'Options']
     types.forEach(type => {
       fetch(`${import.meta.env.VITE_BACKEND_URL}/api/stocks?type=${type}`)
@@ -76,12 +71,22 @@ function App() {
     })
   }, [])
 
+  useEffect(() => {
+    const settings = localStorage.getItem('userSettings')
+    const theme = settings ? JSON.parse(settings).theme : 'light'
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  })
+
   const removeNotification = (id: string) =>
     setNotifications((prev) => prev.filter((n) => n.id !== id))
 
   return (
     <StockDataContext.Provider value={{ stockOptions, setStockOptions }}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col font-sans transition-colors duration-300">
+      <div className="min-h-screen bg-gradient-to-br from-gray-100 to-white dark:from-neutral-900 dark:to-neutral-950 flex flex-col font-sans transition-colors duration-300">
         {/* Notifications */}
         <div className="fixed top-16 right-6 z-50 flex flex-col gap-3 items-end">
           {notifications.map((n) => (
@@ -91,14 +96,14 @@ function App() {
           ))}
         </div>
         {/* Topbar */}
-        <header className="flex items-center justify-between p-5 bg-white/90 shadow-sm backdrop-blur-md transition-all duration-300">
-          <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Dashboard</h1>
+        <header className="flex items-center justify-between p-5 bg-white/90 dark:bg-neutral-900/90 shadow-sm backdrop-blur-md transition-all duration-300">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">Dashboard</h1>
           <button
-            className="p-1 rounded-full hover:bg-gray-200 flex items-center justify-end transition-colors duration-200"
+            className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-neutral-800 flex items-center justify-end transition-colors duration-200"
             onClick={() => setSettingsOpen(true)}
             aria-label="Settings"
           >
-            <SettingsIcon className="text-blue-600" fontSize="large" />
+            <SettingsIcon className="text-blue-600 dark:text-blue-400" fontSize="large" />
           </button>
         </header>
 
@@ -110,19 +115,19 @@ function App() {
               style={{ height: 'calc(100vh - 120px)' }}
             >
               {/* Top Left: Watchlists */}
-              <div className="bg-white rounded-xl shadow-md p-3 flex flex-col h-full min-h-0 row-start-1 col-start-1">
+              <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-md p-3 flex flex-col h-full min-h-0 row-start-1 col-start-1">
                 <Watchlists onSelect={setSelectedWatchlist} />
               </div>
               {/* Top Right: Main Chart */}
-              <div className="bg-white rounded-xl shadow-md p-3 flex flex-col h-full min-h-0 row-start-1 col-start-2">
+              <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-md p-3 flex flex-col h-full min-h-0 row-start-1 col-start-2">
                 <LiveNiftyChart topOnly />
               </div>
               {/* Bottom Left: Chart 1 */}
-              <div className="bg-white rounded-xl shadow-md p-3 flex flex-col h-full min-h-0 row-start-2 col-start-1">
+              <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-md p-3 flex flex-col h-full min-h-0 row-start-2 col-start-1">
                 <LiveNiftyChart bottomOnly chart="1" />
               </div>
               {/* Bottom Right: Chart 2 */}
-              <div className="bg-white rounded-xl shadow-md p-3 flex flex-col h-full min-h-0 row-start-2 col-start-2">
+              <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-md p-3 flex flex-col h-full min-h-0 row-start-2 col-start-2">
                 <LiveNiftyChart bottomOnly chart="2" />
               </div>
             </div>
@@ -134,7 +139,11 @@ function App() {
         </main>
 
         {/* Settings Modal */}
-        <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        <SettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          onNotify={(msg, type) => setNotifications(prev => [...prev, { id: Date.now().toString(), type, message: msg }])}
+        />
       </div>
     </StockDataContext.Provider>
   )

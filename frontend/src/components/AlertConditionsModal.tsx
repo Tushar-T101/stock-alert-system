@@ -126,12 +126,8 @@ export default function AlertConditionsModal({
   initial?: any
   indicators?: string[]
 }) {
-  // Store an array of alert conditions
   const [conditions, setConditions] = useState(
-    initial?.conditions ||
-      [
-        // { indicator: 'RSI', type: 'crosses_above', value: 70 }
-      ]
+    initial?.conditions || []
   )
   const [email, setEmail] = useState(initial?.email || '')
 
@@ -157,12 +153,12 @@ export default function AlertConditionsModal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 animate-fadein">
+    <div className="fixed inset-0 bg-black bg-opacity-30 dark:bg-opacity-80 flex items-center justify-center z-50 animate-fadein">
       <div
-        className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md transition-all duration-300"
+        className="bg-white dark:bg-neutral-950 rounded-xl shadow-2xl p-8 w-full max-w-md transition-all duration-300"
         style={{ maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}
       >
-        <h3 className="text-lg font-bold mb-4">Custom Alert Conditions</h3>
+        <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-neutral-100">Custom Alert Conditions</h3>
         <div className="space-y-4 w-[90%]">
           {conditions.map((cond, idx) => {
             const meta = indicatorMeta.find(i => i.key === cond.indicator) || indicatorMeta[0]
@@ -172,12 +168,11 @@ export default function AlertConditionsModal({
               <div key={idx} className="flex gap-2 items-center">
                 {/* Indicator select */}
                 <select
-                  className="border rounded px-2 py-1"
+                  className="border border-gray-300 dark:border-neutral-800 rounded px-2 py-1 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100"
                   value={cond.indicator}
                   onChange={e => {
                     const newIndicator = e.target.value
                     handleChange(idx, 'indicator', newIndicator)
-                    // Reset type and value
                     handleChange(idx, 'type', getConditionsForIndicator(newIndicator)[0].value)
                     handleChange(idx, 'value', '')
                   }}
@@ -188,7 +183,7 @@ export default function AlertConditionsModal({
                 </select>
                 {/* Condition type select */}
                 <select
-                  className="border rounded px-2 py-1"
+                  className="border border-gray-300 dark:border-neutral-800 rounded px-2 py-1 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100"
                   value={cond.type}
                   onChange={e => handleChange(idx, 'type', e.target.value)}
                 >
@@ -200,7 +195,7 @@ export default function AlertConditionsModal({
                 {selectedType.inputs === 1 && (
                   <input
                     type="number"
-                    className="border rounded px-2 py-1 w-24"
+                    className="border border-gray-300 dark:border-neutral-800 rounded px-2 py-1 w-24 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100"
                     value={cond.value}
                     onChange={e => handleChange(idx, 'value', e.target.value)}
                     placeholder="Value"
@@ -210,17 +205,17 @@ export default function AlertConditionsModal({
                   <>
                     <input
                       type="number"
-                      className="border rounded px-2 py-1 w-20"
+                      className="border border-gray-300 dark:border-neutral-800 rounded px-2 py-1 w-20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100"
                       value={cond.value?.[0] || ''}
                       onChange={e =>
                         handleChange(idx, 'value', [e.target.value, cond.value?.[1] || ''])
                       }
                       placeholder="Min"
                     />
-                    <span className="text-gray-400">to</span>
+                    <span className="text-gray-400 dark:text-neutral-500">to</span>
                     <input
                       type="number"
-                      className="border rounded px-2 py-1 w-20"
+                      className="border border-gray-300 dark:border-neutral-800 rounded px-2 py-1 w-20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100"
                       value={cond.value?.[1] || ''}
                       onChange={e =>
                         handleChange(idx, 'value', [cond.value?.[0] || '', e.target.value])
@@ -230,7 +225,7 @@ export default function AlertConditionsModal({
                   </>
                 )}
                 <button
-                  className="ml-2 text-red-500 hover:text-red-700"
+                  className="ml-2 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                   onClick={() => handleRemove(idx)}
                   title="Remove"
                 >
@@ -240,17 +235,17 @@ export default function AlertConditionsModal({
             )
           })}
           <button
-            className="px-3 py-1 bg-blue-100 rounded hover:bg-blue-200 text-sm"
+            className="px-3 py-1 bg-blue-100 dark:bg-neutral-900 rounded hover:bg-blue-200 dark:hover:bg-neutral-800 text-sm text-blue-700 dark:text-blue-200"
             onClick={handleAdd}
             disabled={indicatorMeta.length === 0}
           >
             + Add Condition
           </button>
           <div>
-            <label className="block font-semibold mb-2">Alert Email</label>
+            <label className="block font-semibold mb-2 text-gray-700 dark:text-neutral-200">Alert Email</label>
             <input
               type="email"
-              className="border rounded px-2 py-1 w-full"
+              className="border border-gray-300 dark:border-neutral-800 rounded px-2 py-1 w-full bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com"
@@ -259,13 +254,13 @@ export default function AlertConditionsModal({
         </div>
         <div className="flex gap-2 mt-8">
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded"
+            className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded font-semibold transition"
             onClick={() => onSave({ conditions, email })}
             disabled={conditions.length === 0}
           >
             Save
           </button>
-          <button className="px-4 py-2 bg-gray-200 rounded" onClick={onClose}>Cancel</button>
+          <button className="px-4 py-2 bg-gray-200 dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 rounded font-semibold" onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>
